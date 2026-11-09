@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'history_repository.dart';
 import 'preferences_repository.dart';
 import 'setup_repository.dart';
 
@@ -12,4 +13,9 @@ final setupRepositoryProvider = FutureProvider<SetupRepository>(
 final preferencesRepositoryProvider = FutureProvider<PreferencesRepository>(
   (ref) async =>
       JsonPreferencesRepository(await getApplicationDocumentsDirectory()),
+);
+
+final historyRepositoryProvider = FutureProvider<TestHistoryRepository>(
+  (ref) async =>
+      JsonHistoryRepository(await getApplicationDocumentsDirectory()),
 );
