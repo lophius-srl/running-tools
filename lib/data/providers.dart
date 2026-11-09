@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'checklist_repository.dart';
 import 'history_repository.dart';
 import 'preferences_repository.dart';
 import 'recent_names_repository.dart';
@@ -37,4 +38,9 @@ final lastVmaProvider = FutureProvider<double?>((ref) async {
 final recentNamesRepositoryProvider = FutureProvider<RecentNamesRepository>(
   (ref) async =>
       JsonRecentNamesRepository(await getApplicationDocumentsDirectory()),
+);
+
+final checklistRepositoryProvider = FutureProvider<ChecklistRepository>(
+  (ref) async =>
+      JsonChecklistRepository(await getApplicationDocumentsDirectory()),
 );

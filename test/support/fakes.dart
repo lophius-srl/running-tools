@@ -8,6 +8,7 @@ import 'package:running_tools/audio/cadence_coach.dart';
 import 'package:running_tools/audio/providers.dart';
 import 'package:running_tools/audio/audio_program.dart';
 import 'package:running_tools/audio/track_service.dart';
+import 'package:running_tools/data/checklist_repository.dart';
 import 'package:running_tools/data/history_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
 import 'package:running_tools/data/providers.dart';
@@ -16,9 +17,11 @@ import 'package:running_tools/data/setup_repository.dart';
 import 'package:running_tools/data/workout_repository.dart';
 import 'package:running_tools/device/accelerometer.dart';
 import 'package:running_tools/device/race_clock.dart';
+import 'package:running_tools/device/reminder_scheduler.dart';
 import 'package:running_tools/device/screen_wake_lock.dart';
 import 'package:running_tools/device/share_service.dart';
 import 'package:running_tools/domain/cadence_advice.dart';
+import 'package:running_tools/domain/checklist.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
@@ -208,6 +211,66 @@ class FakeRecentNamesRepository implements RecentNamesRepository {
   ];
 }
 
+class FakeChecklistRepository implements ChecklistRepository {
+  final customTemplates = <ChecklistTemplate>[];
+  final raceList = <RaceChecklist>[];
+
+  @override
+  Future<List<ChecklistTemplate>> templates() async => [...customTemplates];
+
+  @override
+  Future<void> saveTemplate(ChecklistTemplate template) async {
+    customTemplates
+      ..removeWhere((t) => t.id == template.id)
+      ..add(template);
+  }
+
+  @override
+  Future<void> deleteTemplate(String id) async =>
+      customTemplates.removeWhere((t) => t.id == id);
+
+  @override
+  Future<List<RaceChecklist>> races() async =>
+      [...raceList]..sort((a, b) => a.raceDate.compareTo(b.raceDate));
+
+  @override
+  Future<void> saveRace(RaceChecklist race) async {
+    final i = raceList.indexWhere((r) => r.id == race.id);
+    i >= 0 ? raceList[i] = race : raceList.add(race);
+  }
+
+  @override
+  Future<void> deleteRace(String id) async =>
+      raceList.removeWhere((r) => r.id == id);
+}
+
+class FakeReminderScheduler implements ReminderScheduler {
+  final scheduled = <int, ({DateTime at, String payload})>{};
+  var granted = true;
+
+  @override
+  Future<void> init(void Function(String payload) onOpen) async {}
+
+  @override
+  Future<String?> launchPayload() async => null;
+
+  @override
+  Future<bool> schedule({
+    required int id,
+    required DateTime at,
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    if (!granted) return false;
+    scheduled[id] = (at: at, payload: payload);
+    return true;
+  }
+
+  @override
+  Future<void> cancel(int id) async => scheduled.remove(id);
+}
+
 class FakeScreenWakeLock implements ScreenWakeLock {
   bool enabled = false;
 
@@ -250,7 +313,15 @@ List<Override> fakeOverrides({
   FakeCadenceCoach? coach,
   FakeAccelerometer? accelerometer,
   FakeRecentNamesRepository? recentNames,
+  FakeChecklistRepository? checklists,
+  FakeReminderScheduler? reminders,
 }) => [
+  checklistRepositoryProvider.overrideWith(
+    (ref) async => checklists ?? FakeChecklistRepository(),
+  ),
+  reminderSchedulerProvider.overrideWithValue(
+    reminders ?? FakeReminderScheduler(),
+  ),
   recentNamesRepositoryProvider.overrideWith(
     (ref) async => recentNames ?? FakeRecentNamesRepository(),
   ),

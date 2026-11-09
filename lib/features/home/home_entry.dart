@@ -30,6 +30,10 @@ enum HomeEntry {
     Color(0xFF0B2A6F),
     Color(0xFF1E63E9),
   ]),
+  checklists('Checklists', 'Ne rien oublier le jour J', Icons.checklist, [
+    Color(0xFF0EA5E9),
+    Color(0xFF1E63E9),
+  ]),
   lanes('Couloirs', 'Distance et allure par couloir', Icons.view_week, [
     Color(0xFF1E40AF),
     Color(0xFF0EA5E9),
@@ -60,7 +64,7 @@ enum HomeEntry {
 
   static const tests = [cooper, halfCooper, vameval, lucLeger];
   static const training = [workouts, metronome, multiTimer, club, lanes];
-  static const tools = [history, setup];
+  static const tools = [history, checklists, setup];
 
   /// Entrée de l'accueil d'un test par paliers (pour reprendre ses couleurs).
   static HomeEntry ofStagedTest(StagedTest test) => switch (test) {

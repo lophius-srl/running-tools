@@ -18,9 +18,19 @@ void main() {
     );
   }
 
-  testWidgets('l\'accueil propose les 4 tests et les 2 outils', (tester) async {
+  testWidgets('l\'accueil affiche toutes les entrées', (tester) async {
+    expect({
+      ...HomeEntry.tests,
+      ...HomeEntry.training,
+      ...HomeEntry.tools,
+    }, HomeEntry.values.toSet());
     await pumpApp(tester);
-    for (final entry in HomeEntry.values) {
+    // Dans l'ordre d'affichage : le défilement ne va que vers le bas.
+    for (final entry in [
+      ...HomeEntry.tests,
+      ...HomeEntry.training,
+      ...HomeEntry.tools,
+    ]) {
       await tester.scrollUntilVisible(find.text(entry.label), 100);
       expect(find.text(entry.label), findsOneWidget);
     }
