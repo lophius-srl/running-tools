@@ -29,6 +29,7 @@ Future<BuiltTrack> buildTrack({
   required TrackRenderer renderer,
   required String testName,
   required Directory workDir,
+  required String outputPath,
   void Function(String step)? onProgress,
 }) async {
   AnnouncementClips clips;
@@ -46,7 +47,7 @@ Future<BuiltTrack> buildTrack({
   }
 
   onProgress?.call('Mixage de la piste…');
-  final path = '${workDir.path}/track.wav';
+  final path = outputPath;
   await Isolate.run(() {
     writeWavFile(path, renderer.render(schedule, clips), renderer.sampleRate);
   });
