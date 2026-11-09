@@ -5,6 +5,7 @@ import 'package:running_tools/audio/beep_player.dart';
 import 'package:running_tools/audio/providers.dart';
 import 'package:running_tools/audio/track_renderer.dart';
 import 'package:running_tools/audio/track_service.dart';
+import 'package:running_tools/data/history_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
 import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/data/setup_repository.dart';
@@ -12,6 +13,7 @@ import 'package:running_tools/device/screen_wake_lock.dart';
 import 'package:running_tools/domain/beep_schedule.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
+import 'package:running_tools/domain/test_record.dart';
 import 'package:running_tools/domain/timed_test.dart';
 
 /// Dépôt de réglages en mémoire.
@@ -109,6 +111,21 @@ class FakeBeepPlayer implements BeepPlayer {
   Future<void> dispose() async => calls.add('dispose');
 }
 
+class FakeHistoryRepository implements TestHistoryRepository {
+  final records = <TestRecord>[];
+
+  @override
+  Future<List<TestRecord>> all() async =>
+      [...records]..sort((a, b) => b.date.compareTo(a.date));
+
+  @override
+  Future<void> add(TestRecord record) async => records.add(record);
+
+  @override
+  Future<void> delete(String id) async =>
+      records.removeWhere((r) => r.id == id);
+}
+
 class FakeScreenWakeLock implements ScreenWakeLock {
   bool enabled = false;
 
@@ -125,7 +142,11 @@ List<Override> fakeOverrides({
   FakePreferencesRepository? preferences,
   FakeBeepPlayer? player,
   FakeScreenWakeLock? wakeLock,
+  FakeHistoryRepository? history,
 }) => [
+  historyRepositoryProvider.overrideWith(
+    (ref) async => history ?? FakeHistoryRepository(),
+  ),
   screenWakeLockProvider.overrideWithValue(wakeLock ?? FakeScreenWakeLock()),
   setupRepositoryProvider.overrideWith(
     (ref) async => setups ?? FakeSetupRepository(),
