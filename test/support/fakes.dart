@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:running_tools/audio/beep_player.dart';
+import 'package:running_tools/audio/cadence_coach.dart';
 import 'package:running_tools/audio/providers.dart';
 import 'package:running_tools/audio/audio_program.dart';
 import 'package:running_tools/audio/track_service.dart';
@@ -12,7 +13,9 @@ import 'package:running_tools/data/preferences_repository.dart';
 import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/data/setup_repository.dart';
 import 'package:running_tools/data/workout_repository.dart';
+import 'package:running_tools/device/accelerometer.dart';
 import 'package:running_tools/device/screen_wake_lock.dart';
+import 'package:running_tools/domain/cadence_advice.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
@@ -148,6 +151,28 @@ class FakeWorkoutRepository implements WorkoutRepository {
       workouts.removeWhere((w) => w.id == id);
 }
 
+class FakeCadenceCoach implements CadenceCoach {
+  final said = <CadenceAdvice>[];
+  var prepared = false;
+
+  @override
+  Future<void> prepare() async => prepared = true;
+
+  @override
+  Future<void> say(CadenceAdvice advice) async => said.add(advice);
+
+  @override
+  Future<void> dispose() async {}
+}
+
+/// Accéléromètre piloté par le test.
+class FakeAccelerometer implements AccelerometerSource {
+  final controller = StreamController<AccelSample>.broadcast(sync: true);
+
+  @override
+  Stream<AccelSample> samples() => controller.stream;
+}
+
 class FakeScreenWakeLock implements ScreenWakeLock {
   bool enabled = false;
 
@@ -185,7 +210,13 @@ List<Override> fakeOverrides({
   DistanceMeasurer? measurer,
   FakeWorkoutRepository? workouts,
   FakeTrackService? tracks,
+  FakeCadenceCoach? coach,
+  FakeAccelerometer? accelerometer,
 }) => [
+  cadenceCoachFactoryProvider.overrideWithValue(
+    () => coach ?? FakeCadenceCoach(),
+  ),
+  accelerometerProvider.overrideWithValue(accelerometer ?? FakeAccelerometer()),
   workoutRepositoryProvider.overrideWith(
     (ref) async => workouts ?? FakeWorkoutRepository(),
   ),
