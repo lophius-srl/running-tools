@@ -18,6 +18,7 @@ import '../domain/distance_tracker.dart';
 import '../domain/marker_spacing.dart';
 import '../domain/measurement_method.dart';
 import '../features/common/decimal_text.dart';
+import 'ar_markers.dart';
 
 /// Mesure AR : poser un départ au sol, marcher en visant le sol ; bip,
 /// vibration et repère virtuel tous les N mètres. Renvoie un [SpacingChoice].
@@ -51,6 +52,7 @@ class _ArMeasurePageState extends ConsumerState<ArMeasurePage> {
   ARTrackingState _trackingState = ARTrackingState.notAvailable;
   ARTrackingStateReason? _trackingReason;
   final _nodeNames = <String>[];
+  ARKitNode? _aimNode;
 
   bool get _trackingOk => _trackingState == ARTrackingState.normal;
 
@@ -154,6 +156,7 @@ class _ArMeasurePageState extends ConsumerState<ArMeasurePage> {
           ? null
           : floor.first.worldTransform.getTranslation();
       if (!mounted) return;
+      _moveAim(aim);
       setState(() => _aim = aim);
       final tracker = _tracker;
       if (aim != null && tracker != null) {
@@ -169,13 +172,11 @@ class _ArMeasurePageState extends ConsumerState<ArMeasurePage> {
   void _onMarker(MarkerCrossing crossing, double floorY) {
     _play(_markerPlayer);
     HapticFeedback.heavyImpact();
-    _addNode(
-      ARKitCylinder(
-        radius: 0.08,
-        height: 0.5,
-        materials: [_material(Colors.orange)],
+    _addNodes(
+      ArMarkers.plot(
+        Vector3(crossing.point.x, floorY, crossing.point.z),
+        ArMarkers.markerColor,
       ),
-      Vector3(crossing.point.x, floorY + 0.25, crossing.point.z),
     );
     setState(() {});
   }
@@ -187,10 +188,7 @@ class _ArMeasurePageState extends ConsumerState<ArMeasurePage> {
     _clearNodes();
     _tracker = DistanceTracker(spacingM: spacing, mode: _mode)
       ..start(GroundPoint(aim.x, aim.z));
-    _addNode(
-      ARKitSphere(radius: 0.08, materials: [_material(Colors.green)]),
-      Vector3(aim.x, aim.y + 0.08, aim.z),
-    );
+    _addNodes(ArMarkers.plot(aim, ArMarkers.startColor));
     HapticFeedback.mediumImpact();
     setState(() {});
   }
@@ -204,10 +202,28 @@ class _ArMeasurePageState extends ConsumerState<ArMeasurePage> {
     setState(() => _tracker = null);
   }
 
-  void _addNode(ARKitGeometry geometry, Vector3 position) {
-    final node = ARKitNode(geometry: geometry, position: position);
-    _nodeNames.add(node.name);
-    _ar?.add(node);
+  void _addNodes(List<ARKitNode> nodes) {
+    for (final node in nodes) {
+      _nodeNames.add(node.name);
+      _ar?.add(node);
+    }
+  }
+
+  /// Fait suivre au viseur 3D le point visé ; le cache sans sol visé.
+  void _moveAim(Vector3? aim) {
+    final node = _aimNode;
+    if (aim == null) {
+      node?.isHidden.value = true;
+      return;
+    }
+    if (node == null) {
+      _aimNode = ArMarkers.aim(aim);
+      _ar?.add(_aimNode!);
+    } else {
+      node
+        ..position = Vector3(aim.x, aim.y + ArMarkers.ringThickness, aim.z)
+        ..isHidden.value = false;
+    }
   }
 
   void _clearNodes() {
@@ -216,9 +232,6 @@ class _ArMeasurePageState extends ConsumerState<ArMeasurePage> {
     }
     _nodeNames.clear();
   }
-
-  ARKitMaterial _material(Color color) =>
-      ARKitMaterial(diffuse: ARKitMaterialProperty.color(color));
 
   Future<void> _play(AudioPlayer player) async {
     await player.seek(Duration.zero);
@@ -250,8 +263,14 @@ class _ArMeasurePageState extends ConsumerState<ArMeasurePage> {
             onARKitViewCreated: _onArCreated,
             planeDetection: ARPlaneDetection.horizontal,
           ),
+          // Viseur fin, centre vide : le point visé reste visible.
           Center(
-            child: Icon(Icons.add_circle_outline, size: 48, color: aimColor),
+            child: IgnorePointer(
+              child: CustomPaint(
+                size: const Size.square(44),
+                painter: _CrosshairPainter(aimColor),
+              ),
+            ),
           ),
           if (tracker != null && !_trackingOk)
             Positioned(
@@ -391,4 +410,36 @@ class _FinishActions extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Quatre traits courts autour d'un centre vide.
+class _CrosshairPainter extends CustomPainter {
+  const _CrosshairPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    const gap = 6.0;
+    final arm = size.width / 2;
+    final shadow = Paint()
+      ..color = Colors.black45
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+    final line = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    for (final paint in [shadow, line]) {
+      canvas
+        ..drawLine(c.translate(-arm, 0), c.translate(-gap, 0), paint)
+        ..drawLine(c.translate(gap, 0), c.translate(arm, 0), paint)
+        ..drawLine(c.translate(0, -arm), c.translate(0, -gap), paint)
+        ..drawLine(c.translate(0, gap), c.translate(0, arm), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CrosshairPainter old) => old.color != color;
 }
