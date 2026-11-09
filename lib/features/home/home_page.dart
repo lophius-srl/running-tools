@@ -11,6 +11,7 @@ import '../deck/decks_page.dart';
 import '../fartlek/fartlek_setup_page.dart';
 import '../history/history_page.dart';
 import '../metronome/metronome_page.dart';
+import '../orthostatic/orthostatic_page.dart';
 import '../lane_calculator/lane_calculator_page.dart';
 import '../multi_timer/multi_timer_setup_page.dart';
 import '../setup_assistant/spacing_assistant_page.dart';
@@ -71,6 +72,8 @@ class HomePage extends StatelessWidget {
         page = const HistoryPage();
       case HomeEntry.checklists:
         page = const ChecklistsPage();
+      case HomeEntry.orthostatic:
+        page = const OrthostaticPage();
       case HomeEntry.lanes:
         page = const LaneCalculatorPage();
       case HomeEntry.workouts:

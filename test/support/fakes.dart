@@ -12,6 +12,7 @@ import 'package:running_tools/data/checklist_repository.dart';
 import 'package:running_tools/data/deck_repository.dart';
 import 'package:running_tools/data/fartlek_repository.dart';
 import 'package:running_tools/data/history_repository.dart';
+import 'package:running_tools/data/orthostatic_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
 import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/data/recent_names_repository.dart';
@@ -26,6 +27,7 @@ import 'package:running_tools/domain/cadence_advice.dart';
 import 'package:running_tools/domain/checklist.dart';
 import 'package:running_tools/domain/deck.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
+import 'package:running_tools/domain/orthostatic.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
 import 'package:running_tools/domain/test_record.dart';
@@ -270,8 +272,33 @@ class FakeReminderScheduler implements ReminderScheduler {
     return true;
   }
 
+  final weekly = <int, ({int weekday, int hour, int minute, String payload})>{};
+
   @override
-  Future<void> cancel(int id) async => scheduled.remove(id);
+  Future<bool> scheduleWeekly({
+    required int id,
+    required int weekday,
+    required int hour,
+    required int minute,
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    if (!granted) return false;
+    weekly[id] = (
+      weekday: weekday,
+      hour: hour,
+      minute: minute,
+      payload: payload,
+    );
+    return true;
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    scheduled.remove(id);
+    weekly.remove(id);
+  }
 }
 
 class FakeFartlekRepository implements FartlekRepository {
@@ -299,6 +326,31 @@ class FakeDeckRepository implements DeckRepository {
 
   @override
   Future<void> delete(String id) async => decks.removeWhere((d) => d.id == id);
+}
+
+class FakeOrthostaticRepository implements OrthostaticRepository {
+  final results = <OrthostaticResult>[];
+  ({int weekday, int hour, int minute})? savedReminder;
+
+  @override
+  Future<List<OrthostaticResult>> all() async =>
+      [...results]..sort((a, b) => b.date.compareTo(a.date));
+
+  @override
+  Future<void> add(OrthostaticResult result) async => results.add(result);
+
+  @override
+  Future<void> delete(DateTime date) async =>
+      results.removeWhere((r) => r.date == date);
+
+  @override
+  Future<({int weekday, int hour, int minute})?> reminder() async =>
+      savedReminder;
+
+  @override
+  Future<void> setReminder(
+    ({int weekday, int hour, int minute})? value,
+  ) async => savedReminder = value;
 }
 
 class FakeScreenWakeLock implements ScreenWakeLock {
@@ -347,7 +399,11 @@ List<Override> fakeOverrides({
   FakeReminderScheduler? reminders,
   FakeFartlekRepository? fartleks,
   FakeDeckRepository? decks,
+  FakeOrthostaticRepository? orthostatic,
 }) => [
+  orthostaticRepositoryProvider.overrideWith(
+    (ref) async => orthostatic ?? FakeOrthostaticRepository(),
+  ),
   deckRepositoryProvider.overrideWith(
     (ref) async => decks ?? FakeDeckRepository(),
   ),
