@@ -25,16 +25,29 @@ class RunHeader extends StatelessWidget {
               const BackButton(color: Colors.white),
               Icon(entry.icon, color: Colors.white),
               const SizedBox(width: 10),
-              Text(
-                entry.label,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+              // Le titre se tronque si l'information de droite est longue.
+              Expanded(
+                child: Text(
+                  entry.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-              const Spacer(),
-              if (trailing != null)
-                Text(trailing!, style: const TextStyle(color: Colors.white)),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    trailing!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
