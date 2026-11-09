@@ -57,6 +57,10 @@ enum HomeEntry {
   fartlek('Fartlek surprise', 'Accélérations au hasard', Icons.shuffle, [
     Color(0xFFDC2626),
     Color(0xFF1E63E9),
+  ]),
+  deck('Deck de fractionné', 'Tire tes efforts au hasard', Icons.style, [
+    Color(0xFF7C3AED),
+    Color(0xFF1E63E9),
   ]);
 
   const HomeEntry(this.label, this.subtitle, this.icon, this.gradient);
@@ -70,6 +74,7 @@ enum HomeEntry {
   static const training = [
     workouts,
     fartlek,
+    deck,
     metronome,
     multiTimer,
     club,
