@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 import 'dart:async';
 
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -10,11 +12,13 @@ import 'package:running_tools/data/preferences_repository.dart';
 import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/data/setup_repository.dart';
 import 'package:running_tools/device/screen_wake_lock.dart';
+import 'package:running_tools/domain/marker_spacing.dart';
 import 'package:running_tools/domain/beep_schedule.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
 import 'package:running_tools/domain/test_record.dart';
 import 'package:running_tools/domain/timed_test.dart';
+import 'package:running_tools/measure/distance_measurer.dart';
 
 /// Dépôt de réglages en mémoire.
 class FakeSetupRepository implements SetupRepository {
@@ -144,6 +148,23 @@ class FakeScreenWakeLock implements ScreenWakeLock {
   Future<void> disable() async => enabled = false;
 }
 
+/// Mesure instantanée : renvoie [result] sans ouvrir la caméra.
+class FakeDistanceMeasurer implements DistanceMeasurer {
+  FakeDistanceMeasurer(this.result);
+
+  final SpacingChoice? result;
+  double? requestedSpacing;
+
+  @override
+  Future<SpacingChoice?> measure(
+    BuildContext context, {
+    required double initialSpacingM,
+  }) async {
+    requestedSpacing = initialSpacingM;
+    return result;
+  }
+}
+
 /// Remplace tous les services natifs par des faux.
 List<Override> fakeOverrides({
   FakeSetupRepository? setups,
@@ -151,7 +172,11 @@ List<Override> fakeOverrides({
   FakeBeepPlayer? player,
   FakeScreenWakeLock? wakeLock,
   FakeHistoryRepository? history,
+  DistanceMeasurer? measurer,
 }) => [
+  distanceMeasurerProvider.overrideWithValue(
+    measurer ?? FakeDistanceMeasurer(null),
+  ),
   historyRepositoryProvider.overrideWith(
     (ref) async => history ?? FakeHistoryRepository(),
   ),
