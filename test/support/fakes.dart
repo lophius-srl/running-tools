@@ -9,6 +9,7 @@ import 'package:running_tools/audio/providers.dart';
 import 'package:running_tools/audio/audio_program.dart';
 import 'package:running_tools/audio/track_service.dart';
 import 'package:running_tools/data/checklist_repository.dart';
+import 'package:running_tools/data/deck_repository.dart';
 import 'package:running_tools/data/fartlek_repository.dart';
 import 'package:running_tools/data/history_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
@@ -23,6 +24,7 @@ import 'package:running_tools/device/screen_wake_lock.dart';
 import 'package:running_tools/device/share_service.dart';
 import 'package:running_tools/domain/cadence_advice.dart';
 import 'package:running_tools/domain/checklist.dart';
+import 'package:running_tools/domain/deck.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
@@ -282,6 +284,23 @@ class FakeFartlekRepository implements FartlekRepository {
   Future<void> remember(RecentFartlek fartlek) async => list.insert(0, fartlek);
 }
 
+class FakeDeckRepository implements DeckRepository {
+  final decks = <Deck>[];
+
+  @override
+  Future<List<Deck>> all() async => [...decks];
+
+  @override
+  Future<void> save(Deck deck) async {
+    decks
+      ..removeWhere((d) => d.id == deck.id)
+      ..add(deck);
+  }
+
+  @override
+  Future<void> delete(String id) async => decks.removeWhere((d) => d.id == id);
+}
+
 class FakeScreenWakeLock implements ScreenWakeLock {
   bool enabled = false;
 
@@ -327,7 +346,11 @@ List<Override> fakeOverrides({
   FakeChecklistRepository? checklists,
   FakeReminderScheduler? reminders,
   FakeFartlekRepository? fartleks,
+  FakeDeckRepository? decks,
 }) => [
+  deckRepositoryProvider.overrideWith(
+    (ref) async => decks ?? FakeDeckRepository(),
+  ),
   fartlekRepositoryProvider.overrideWith(
     (ref) async => fartleks ?? FakeFartlekRepository(),
   ),
