@@ -14,7 +14,9 @@ import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/data/setup_repository.dart';
 import 'package:running_tools/data/workout_repository.dart';
 import 'package:running_tools/device/accelerometer.dart';
+import 'package:running_tools/device/race_clock.dart';
 import 'package:running_tools/device/screen_wake_lock.dart';
+import 'package:running_tools/device/share_service.dart';
 import 'package:running_tools/domain/cadence_advice.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
@@ -173,6 +175,24 @@ class FakeAccelerometer implements AccelerometerSource {
   Stream<AccelSample> samples() => controller.stream;
 }
 
+/// Horloge pilotée par le test.
+class FakeRaceClock implements RaceClock {
+  var started = false;
+  @override
+  Duration elapsed = Duration.zero;
+
+  @override
+  void start() => started = true;
+}
+
+class FakeShareService implements ShareService {
+  final shared = <String>[];
+
+  @override
+  Future<void> shareText(String text, {String? subject}) async =>
+      shared.add(text);
+}
+
 class FakeScreenWakeLock implements ScreenWakeLock {
   bool enabled = false;
 
@@ -210,9 +230,13 @@ List<Override> fakeOverrides({
   DistanceMeasurer? measurer,
   FakeWorkoutRepository? workouts,
   FakeTrackService? tracks,
+  FakeRaceClock? clock,
+  FakeShareService? share,
   FakeCadenceCoach? coach,
   FakeAccelerometer? accelerometer,
 }) => [
+  raceClockFactoryProvider.overrideWithValue(() => clock ?? FakeRaceClock()),
+  shareServiceProvider.overrideWithValue(share ?? FakeShareService()),
   cadenceCoachFactoryProvider.overrideWithValue(
     () => coach ?? FakeCadenceCoach(),
   ),
