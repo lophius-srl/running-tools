@@ -37,4 +37,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Tests'), findsOneWidget);
   });
+
+  testWidgets('Cooper ouvre directement le chrono', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Cooper'));
+    await tester.pumpAndSettle();
+    expect(find.text('Départ dans 10 s'), findsOneWidget);
+  });
 }

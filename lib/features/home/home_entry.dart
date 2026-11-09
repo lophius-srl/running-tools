@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/stage_protocol.dart';
+import '../../domain/timed_test.dart';
 
 /// Entrées de l'écran d'accueil.
 enum HomeEntry {
@@ -43,6 +44,18 @@ enum HomeEntry {
   static HomeEntry ofStagedTest(StagedTest test) => switch (test) {
     StagedTest.vameval => vameval,
     StagedTest.lucLeger => lucLeger,
+  };
+
+  static HomeEntry ofTimedTest(TimedTest test) => switch (test) {
+    TimedTest.cooper => cooper,
+    TimedTest.halfCooper => halfCooper,
+  };
+
+  /// Test chronométré correspondant, s'il y en a un.
+  TimedTest? get timedTest => switch (this) {
+    cooper => TimedTest.cooper,
+    halfCooper => TimedTest.halfCooper,
+    _ => null,
   };
 
   /// Test par paliers correspondant, s'il y en a un.

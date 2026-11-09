@@ -12,6 +12,7 @@ import 'package:running_tools/device/screen_wake_lock.dart';
 import 'package:running_tools/domain/beep_schedule.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
+import 'package:running_tools/domain/timed_test.dart';
 
 /// Dépôt de réglages en mémoire.
 class FakeSetupRepository implements SetupRepository {
@@ -48,6 +49,12 @@ class FakeTrackService implements TrackService {
     ),
     renderer: TrackRenderer(),
   );
+
+  @override
+  Future<PreparedTimedTrack> prepareTimed(
+    TimedTest test, {
+    void Function(String step)? onProgress,
+  }) async => const PreparedTimedTrack(path: 'fake_timed.wav', leadIn: 10);
 }
 
 /// Lecteur piloté par le test.

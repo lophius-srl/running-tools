@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../domain/staged_test_setup.dart';
+import '../domain/timed_test.dart';
 import 'track_renderer.dart';
 
 /// À incrémenter quand le rendu de la piste change (sons, annonces…).
@@ -17,6 +18,20 @@ String trackCacheKey(StagedTestSetup setup, TrackRenderer renderer) {
   };
   return _fnv1a64(jsonEncode(audible)).toRadixString(16);
 }
+
+/// Clé d'une piste de test chronométré.
+String timedTrackCacheKey(
+  TimedTest test, {
+  required int sampleRate,
+  required int leadIn,
+}) => _fnv1a64(
+  jsonEncode({
+    'timed': test.name,
+    'sampleRate': sampleRate,
+    'leadIn': leadIn,
+    'format': trackFormatVersion,
+  }),
+).toRadixString(16);
 
 /// Hachage FNV-1a 64 bits (déterministe d'une exécution à l'autre).
 int _fnv1a64(String text) {
