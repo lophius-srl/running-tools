@@ -2,18 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
+import '../../domain/marker_spacing.dart';
 import '../../domain/measurement_method.dart';
 import '../../domain/stage_protocol.dart';
 import '../../domain/staged_test_setup.dart';
 import '../common/decimal_text.dart';
 import '../home/home_entry.dart';
+import '../setup_assistant/spacing_assistant_page.dart';
 import '../staged_run/staged_run_page.dart';
 
 /// Réglages d'un test par paliers avant le départ.
 class StagedSetupPage extends ConsumerStatefulWidget {
-  const StagedSetupPage({super.key, required this.test});
+  const StagedSetupPage({super.key, required this.test, this.initialChoice});
 
   final StagedTest test;
+
+  /// Espacement choisi dans l'assistant, prioritaire sur les réglages mémorisés.
+  final SpacingChoice? initialChoice;
 
   @override
   ConsumerState<StagedSetupPage> createState() => _StagedSetupPageState();
@@ -38,6 +43,21 @@ class _StagedSetupPageState extends ConsumerState<StagedSetupPage> {
     final repository = await ref.read(setupRepositoryProvider.future);
     final saved = await repository.load(widget.test);
     if (saved != null && mounted) setState(() => _fill(saved));
+    if (widget.initialChoice case final choice? when mounted) {
+      setState(() => _applyChoice(choice));
+    }
+  }
+
+  void _applyChoice(SpacingChoice choice) {
+    _spacing.text = formatDecimal(choice.spacingM);
+    _method = choice.method;
+  }
+
+  Future<void> _openAssistant() async {
+    final choice = await Navigator.of(context).push<SpacingChoice>(
+      MaterialPageRoute(builder: (_) => const SpacingAssistantPage()),
+    );
+    if (choice != null && mounted) setState(() => _applyChoice(choice));
   }
 
   void _fill(StagedTestSetup setup) {
@@ -130,6 +150,14 @@ class _StagedSetupPageState extends ConsumerState<StagedSetupPage> {
             icon: Icons.straighten,
             children: [
               field(_spacing, 'Espacement des repères', 'm'),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _openAssistant,
+                  icon: const Icon(Icons.straighten),
+                  label: const Text('Mesurer mes repères'),
+                ),
+              ),
               DropdownButtonFormField<MeasurementMethod>(
                 initialValue: _method,
                 isExpanded: true,
