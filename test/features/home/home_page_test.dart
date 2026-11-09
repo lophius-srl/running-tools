@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:running_tools/app.dart';
+import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/features/home/home_entry.dart';
+
+import '../../support/fakes.dart';
 
 void main() {
   Future<void> pumpApp(WidgetTester tester) async {
@@ -11,7 +14,16 @@ void main() {
       ..physicalSize = const Size(1179, 2556)
       ..devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(const ProviderScope(child: RunningToolsApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          setupRepositoryProvider.overrideWith(
+            (ref) async => FakeSetupRepository(),
+          ),
+        ],
+        child: const RunningToolsApp(),
+      ),
+    );
   }
 
   testWidgets('l\'accueil propose les 4 tests et les 2 outils', (tester) async {
@@ -28,7 +40,7 @@ void main() {
     await tester.tap(find.text('VAMEVAL'));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(AppBar, 'VAMEVAL'), findsOneWidget);
+    expect(find.text('Réglages du test'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(find.text('Tests'), findsOneWidget);

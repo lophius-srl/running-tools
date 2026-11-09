@@ -3,15 +3,19 @@ import 'package:flutter/services.dart';
 
 import '../../app_theme.dart';
 import '../common/coming_soon_page.dart';
+import '../staged_setup/staged_setup_page.dart';
 import 'home_entry.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   void _open(BuildContext context, HomeEntry entry) {
+    final stagedTest = entry.stagedTest;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ComingSoonPage(title: entry.label),
+        builder: (_) => stagedTest != null
+            ? StagedSetupPage(test: stagedTest)
+            : ComingSoonPage(title: entry.label),
       ),
     );
   }
