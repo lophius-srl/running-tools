@@ -62,5 +62,8 @@ Pour rester un usage « humain » :
 | `qa` | Écrit/complète les tests, cherche les cas limites | Avant ou pendant la PR |
 | `reviewer` | Relit une PR selon la checklist | PR ouverte |
 
-Le **propriétaire humain** du repo reste le lead : il valide les issues, relit et merge les PR.
-Un agent ne merge jamais une PR et ne modifie jamais la CI ni les règles de branche sans demande explicite.
+Le **propriétaire humain** du repo reste le lead : il valide les issues, relit les PR et décide des merges.
+- **Merge** : seul l'agent principal peut merger (`gh pr merge`), et uniquement quand le propriétaire le demande
+  explicitement pour des PR précises, CI verte. Jamais de sa propre initiative ; les sous-agents ne mergent pas.
+  Voir `docs/adr/0005-merge-par-agent-sur-demande.md`.
+- Un agent ne modifie jamais la CI ni les règles de branche sans demande explicite.
