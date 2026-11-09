@@ -1,32 +1,31 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:running_tools/audio/track_builder.dart';
+import 'package:running_tools/audio/audio_program.dart';
 import 'package:running_tools/audio/track_service.dart';
-import 'package:running_tools/domain/stage_protocol.dart';
-import 'package:running_tools/domain/staged_test_setup.dart';
-import 'package:running_tools/domain/timed_test.dart';
 
 void main() {
   late Directory dir;
   late int builds;
   String? voiceError;
 
-  Future<BuiltTrack> fakeBuild({
-    required schedule,
-    required renderer,
-    required String testName,
+  Future<String?> fakeBuild(
+    AudioProgram program, {
     required Directory workDir,
     required String outputPath,
+    int sampleRate = 22050,
     void Function(String step)? onProgress,
   }) async {
     builds++;
     File(outputPath).writeAsStringSync('wav');
-    return BuiltTrack(path: outputPath, bytes: 3, voiceError: voiceError);
+    return voiceError;
   }
 
-  final vameval = StagedTestSetup.defaults(StagedTest.vameval);
-  final leger = StagedTestSetup.defaults(StagedTest.lucLeger);
+  AudioProgram program(double markerAt) => AudioProgram(
+    durationS: 30,
+    leadInS: 10,
+    events: [ProgramEvent.cue(markerAt, Cue.marker)],
+  );
 
   setUp(() {
     dir = Directory.systemTemp.createTempSync('tracks');
@@ -38,64 +37,32 @@ void main() {
   List<String> trackFiles() =>
       dir.listSync().map((e) => e.uri.pathSegments.last).toList();
 
-  test('mêmes réglages : piste réutilisée', () async {
+  test('même programme : piste réutilisée', () async {
     final service = CachedTrackService(dir, build: fakeBuild);
-    final first = await service.prepare(vameval);
-    final second = await service.prepare(vameval);
+    final first = await service.prepare(program(12));
+    final second = await service.prepare(program(12));
     expect(builds, 1);
     expect(second.path, first.path);
-    expect(second.schedule.durationS, 25 * 60);
+    expect(second.activityTimeAt(const Duration(seconds: 15)), 5);
   });
 
-  test(
-    'nouveaux réglages : nouvelle piste, l\'ancienne est supprimée',
-    () async {
-      final service = CachedTrackService(dir, build: fakeBuild);
-      await service.prepare(vameval);
-      await service.prepare(leger);
-      expect(builds, 2);
-      expect(trackFiles(), hasLength(1));
-    },
-  );
+  test('autre programme : nouvelle piste, l\'ancienne est supprimée', () async {
+    final service = CachedTrackService(dir, build: fakeBuild);
+    await service.prepare(program(12));
+    await service.prepare(program(13));
+    expect(builds, 2);
+    expect(trackFiles(), hasLength(1));
+  });
 
   test('voix en échec : piste jouable mais pas mise en cache', () async {
     voiceError = 'tts';
     final service = CachedTrackService(dir, build: fakeBuild);
-    final track = await service.prepare(vameval);
+    final track = await service.prepare(program(12));
     expect(track.voiceError, 'tts');
     expect(File(track.path).existsSync(), isTrue);
 
     voiceError = null;
-    await service.prepare(vameval);
+    await service.prepare(program(12));
     expect(builds, 2);
-  });
-
-  test('piste chronométrée en cache, et une seule piste gardée', () async {
-    var timedBuilds = 0;
-    Future<String?> fakeTimed(
-      TimedTest test, {
-      required Directory workDir,
-      required String outputPath,
-      int sampleRate = 22050,
-      int leadIn = 10,
-      void Function(String step)? onProgress,
-    }) async {
-      timedBuilds++;
-      File(outputPath).writeAsStringSync('wav');
-      return null;
-    }
-
-    final service = CachedTrackService(
-      dir,
-      build: fakeBuild,
-      buildTimed: fakeTimed,
-    );
-    await service.prepare(vameval);
-    final first = await service.prepareTimed(TimedTest.cooper);
-    final again = await service.prepareTimed(TimedTest.cooper);
-    expect(timedBuilds, 1);
-    expect(again.path, first.path);
-    expect(again.leadIn, 10);
-    expect(trackFiles(), hasLength(1));
   });
 }
