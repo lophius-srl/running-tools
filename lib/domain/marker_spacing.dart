@@ -5,7 +5,12 @@ enum StandardField {
   football('Football', 'Profondeur de la surface de réparation', 16.5),
   handball('Handball', 'Largeur du terrain', 20),
   rugby('Rugby', 'De la ligne de but à la ligne des 22 m', 22),
-  tennis('Tennis', 'Longueur du court (ligne de fond à ligne de fond)', 23.77);
+  tennis('Tennis', 'Longueur du court (ligne de fond à ligne de fond)', 23.77),
+  track(
+    'Piste d’athlétisme (400 m)',
+    'Couloir 1 : 20 plots tous les 20 m par tour',
+    20,
+  );
 
   const StandardField(this.label, this.howTo, this.spacingM);
 

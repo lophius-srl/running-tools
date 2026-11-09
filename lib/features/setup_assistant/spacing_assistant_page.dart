@@ -6,6 +6,7 @@ import '../../domain/measurement_method.dart';
 import '../../measure/distance_measurer.dart';
 import '../common/decimal_text.dart';
 import 'shoe_section.dart';
+import 'track_guide_sheet.dart';
 
 /// Assistant de mise en place : choisir comment obtenir l'espacement des
 /// repères. Renvoie un [SpacingChoice] via `Navigator.pop`.
@@ -30,6 +31,26 @@ class _SpacingAssistantPageState extends ConsumerState<SpacingAssistantPage> {
   }
 
   void _choose(SpacingChoice choice) => Navigator.of(context).pop(choice);
+
+  /// La piste demande un mode d'emploi avant de valider l'espacement.
+  Future<void> _chooseField(StandardField field) async {
+    if (field == StandardField.track) {
+      final confirmed = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (_) => const TrackGuideSheet(),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    _choose(
+      SpacingChoice(
+        field.spacingM,
+        MeasurementMethod.field,
+        source: field.label,
+      ),
+    );
+  }
 
   Future<void> _measureWithAr() async {
     final measurer = ref.read(distanceMeasurerProvider);
@@ -100,13 +121,7 @@ class _SpacingAssistantPageState extends ConsumerState<SpacingAssistantPage> {
                       '${formatDecimal(f.spacingM)} m',
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    onTap: () => _choose(
-                      SpacingChoice(
-                        f.spacingM,
-                        MeasurementMethod.field,
-                        source: f.label,
-                      ),
-                    ),
+                    onTap: () => _chooseField(f),
                   ),
               ],
             ),
