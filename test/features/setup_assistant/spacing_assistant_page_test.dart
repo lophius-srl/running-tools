@@ -143,4 +143,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('28'), findsOneWidget);
   });
+
+  testWidgets('piste : mode d\'emploi puis 20 m', (tester) async {
+    await pumpAssistant(tester);
+    await tester.tap(find.text('Terrain normé'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Piste d’athlétisme (400 m)'),
+      100,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Piste d’athlétisme (400 m)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sur une piste de 400 m'), findsOneWidget);
+    expect(find.textContaining('84,39 m'), findsOneWidget);
+    expect(result, isNull);
+
+    await tester.ensureVisible(find.text('Utiliser 20 m'));
+    await tester.pump();
+    await tester.tap(find.text('Utiliser 20 m'));
+    await tester.pumpAndSettle();
+    expect(result!.spacingM, 20);
+    expect(result!.method, MeasurementMethod.field);
+    expect(result!.source, 'Piste d’athlétisme (400 m)');
+  });
+
+  testWidgets('piste : fermer le mode d\'emploi ne valide rien', (
+    tester,
+  ) async {
+    await pumpAssistant(tester);
+    await tester.tap(find.text('Terrain normé'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Piste d’athlétisme (400 m)'),
+      100,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Piste d’athlétisme (400 m)'));
+    await tester.pumpAndSettle();
+    await tester.tapAt(const Offset(20, 40));
+    await tester.pumpAndSettle();
+    expect(result, isNull);
+    expect(find.byType(SpacingAssistantPage), findsOneWidget);
+  });
 }
