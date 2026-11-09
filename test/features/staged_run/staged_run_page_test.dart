@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
+import 'package:running_tools/features/staged_run/pocket_mode_overlay.dart';
 import 'package:running_tools/features/staged_run/staged_run_page.dart';
 
 import '../../support/fakes.dart';
@@ -10,6 +11,7 @@ import '../../support/fakes.dart';
 void main() {
   late FakeBeepPlayer player;
   late FakePreferencesRepository preferences;
+  late FakeScreenWakeLock wakeLock;
 
   Future<void> pumpPage(WidgetTester tester) async {
     tester.view
@@ -18,7 +20,11 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: fakeOverrides(player: player, preferences: preferences),
+        overrides: fakeOverrides(
+          player: player,
+          preferences: preferences,
+          wakeLock: wakeLock,
+        ),
         child: MaterialApp(
           home: StagedRunPage(
             setup: StagedTestSetup.defaults(StagedTest.vameval),
@@ -32,6 +38,7 @@ void main() {
   setUp(() {
     player = FakeBeepPlayer();
     preferences = FakePreferencesRepository();
+    wakeLock = FakeScreenWakeLock();
   });
 
   testWidgets('piste chargée avec la préférence de ducking', (tester) async {
@@ -76,9 +83,11 @@ void main() {
 
   testWidgets('quitter l\'écran arrête et libère le lecteur', (tester) async {
     await pumpPage(tester);
+    expect(wakeLock.enabled, isTrue);
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
     expect(player.calls, containsAllInOrder(['stop', 'dispose']));
+    expect(wakeLock.enabled, isFalse);
   });
 
   testWidgets('« J\'ai décroché » arrête la piste et ouvre le résultat', (
@@ -95,5 +104,43 @@ void main() {
 
     expect(player.calls, contains('pause'));
     expect(find.text('VMA 14,5 km/h'), findsOneWidget);
+  });
+
+  testWidgets('mode poche : un tap ne fait rien, 2 s de maintien décrochent', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+    player.emitPosition(const Duration(minutes: 14, seconds: 20));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Mode poche'));
+    await tester.pump();
+    expect(find.byType(PocketModeOverlay), findsOneWidget);
+
+    final dropOut = find.text("J'ai décroché").last;
+    await tester.tap(dropOut);
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.byType(PocketModeOverlay), findsOneWidget);
+
+    final gesture = await tester.startGesture(tester.getCenter(dropOut));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 2100));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text('VMA 14,5 km/h'), findsOneWidget);
+  });
+
+  testWidgets('mode poche : maintien en haut pour en sortir', (tester) async {
+    await pumpPage(tester);
+    await tester.tap(find.byTooltip('Mode poche'));
+    await tester.pump();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byIcon(Icons.lock_open)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1100));
+    await gesture.up();
+    await tester.pump();
+    expect(find.byType(PocketModeOverlay), findsNothing);
   });
 }

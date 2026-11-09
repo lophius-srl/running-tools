@@ -8,6 +8,7 @@ import 'package:running_tools/audio/track_service.dart';
 import 'package:running_tools/data/preferences_repository.dart';
 import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/data/setup_repository.dart';
+import 'package:running_tools/device/screen_wake_lock.dart';
 import 'package:running_tools/domain/beep_schedule.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
@@ -101,12 +102,24 @@ class FakeBeepPlayer implements BeepPlayer {
   Future<void> dispose() async => calls.add('dispose');
 }
 
+class FakeScreenWakeLock implements ScreenWakeLock {
+  bool enabled = false;
+
+  @override
+  Future<void> enable() async => enabled = true;
+
+  @override
+  Future<void> disable() async => enabled = false;
+}
+
 /// Remplace tous les services natifs par des faux.
 List<Override> fakeOverrides({
   FakeSetupRepository? setups,
   FakePreferencesRepository? preferences,
   FakeBeepPlayer? player,
+  FakeScreenWakeLock? wakeLock,
 }) => [
+  screenWakeLockProvider.overrideWithValue(wakeLock ?? FakeScreenWakeLock()),
   setupRepositoryProvider.overrideWith(
     (ref) async => setups ?? FakeSetupRepository(),
   ),

@@ -62,6 +62,7 @@ Pour rester un usage « humain » :
   | `audio/` | Rendu de la piste (pur) + `BeepPlayer`, synthèse vocale (natif) | Le natif reste derrière `BeepPlayer` |
   | `measure/` | `DistanceMeasurer` : ARKit et saisie manuelle | Le natif reste derrière l'interface |
   | `data/` | `TestHistoryRepository` et son implémentation JSON | |
+  | `device/` | Services de l'appareil (wakelock…) | Derrière une interface + provider |
   | `features/<écran>/` | Widgets et providers d'un écran | Pas de calcul métier ici |
 - `test/` reproduit l'arborescence de `lib/`. Le domaine et le rendu audio sont testés
   unitairement ; les écrans avec de fausses versions des services (overrides Riverpod).
