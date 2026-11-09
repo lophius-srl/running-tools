@@ -80,4 +80,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(player.calls, containsAllInOrder(['stop', 'dispose']));
   });
+
+  testWidgets('« J\'ai décroché » arrête la piste et ouvre le résultat', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+    expect(find.text("J'ai décroché"), findsNothing);
+
+    // 10 s d'intro + 14 min 10 s : palier 14 complet.
+    player.emitPosition(const Duration(minutes: 14, seconds: 20));
+    await tester.pump();
+    await tester.tap(find.text("J'ai décroché"));
+    await tester.pumpAndSettle();
+
+    expect(player.calls, contains('pause'));
+    expect(find.text('VMA 14,5 km/h'), findsOneWidget);
+  });
 }

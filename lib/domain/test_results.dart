@@ -29,7 +29,7 @@ TestResult halfCooperResult(double distanceM) {
 
 /// Vitesse retenue pour un test par paliers : celle du dernier palier complet,
 /// plus, avec [prorata], la part courue du palier suivant.
-double reachedSpeedKmh(
+double reachedSpeedKmhFor(
   StageProtocol protocol, {
   required int completedStages,
   double fractionOfNextStage = 0,
