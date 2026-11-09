@@ -38,6 +38,9 @@ dependencies:
   audio_session: ^0.2.4
   flutter_tts: ^4.2.5
   path_provider: ^2.1.6
+  arkit_plugin: ^1.5.0
+  wakelock_plus: ^1.8.2
+  vector_math: ^2.4.4
 
 dev_dependencies:
   flutter_test:
