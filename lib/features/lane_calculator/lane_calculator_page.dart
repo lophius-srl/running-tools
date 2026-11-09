@@ -4,6 +4,7 @@ import '../../audio/announcements.dart';
 import '../../domain/track_lanes.dart';
 import '../../domain/training_paces.dart';
 import '../common/decimal_text.dart';
+import '../common/lane_selector.dart';
 import '../common/duration_text.dart';
 import '../home/home_entry.dart';
 
@@ -126,20 +127,10 @@ class _LaneCalculatorPageState extends State<LaneCalculatorPage> {
               children: [
                 Text('Couloir', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    for (var lane = 1; lane <= _track.lanes; lane++)
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: _LaneButton(
-                            lane: lane,
-                            selected: _lane == lane,
-                            onTap: () => setState(() => _lane = lane),
-                          ),
-                        ),
-                      ),
-                  ],
+                LaneSelector(
+                  lanes: _track.lanes,
+                  selected: _lane,
+                  onChanged: (lane) => setState(() => _lane = lane),
                 ),
                 const SizedBox(height: 16),
                 SegmentedButton<_Direction>(
@@ -219,51 +210,6 @@ class _LaneCalculatorPageState extends State<LaneCalculatorPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Gros bouton de couloir, facile à viser en extérieur.
-class _LaneButton extends StatelessWidget {
-  const _LaneButton({
-    required this.lane,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final int lane;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: 'Couloir $lane',
-      excludeSemantics: true,
-      child: Material(
-        color: selected ? scheme.primary : scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: SizedBox(
-            height: 56,
-            child: Center(
-              child: Text(
-                '$lane',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: selected ? scheme.onPrimary : scheme.onSurface,
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
