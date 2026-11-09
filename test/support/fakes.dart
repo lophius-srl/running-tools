@@ -5,7 +5,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:running_tools/audio/beep_player.dart';
 import 'package:running_tools/audio/providers.dart';
-import 'package:running_tools/audio/track_renderer.dart';
+import 'package:running_tools/audio/audio_program.dart';
 import 'package:running_tools/audio/track_service.dart';
 import 'package:running_tools/data/history_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
@@ -13,11 +13,9 @@ import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/data/setup_repository.dart';
 import 'package:running_tools/device/screen_wake_lock.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
-import 'package:running_tools/domain/beep_schedule.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
 import 'package:running_tools/domain/test_record.dart';
-import 'package:running_tools/domain/timed_test.dart';
 import 'package:running_tools/measure/distance_measurer.dart';
 
 /// Dépôt de réglages en mémoire.
@@ -51,24 +49,16 @@ class FakePreferencesRepository implements PreferencesRepository {
 
 /// Piste instantanée, sans audio.
 class FakeTrackService implements TrackService {
-  @override
-  Future<PreparedTrack> prepare(
-    StagedTestSetup setup, {
-    void Function(String step)? onProgress,
-  }) async => PreparedTrack(
-    path: 'fake.wav',
-    schedule: BeepSchedule.generate(
-      setup.protocol,
-      duration: setup.maxDuration,
-    ),
-    renderer: TrackRenderer(),
-  );
+  final programs = <AudioProgram>[];
 
   @override
-  Future<PreparedTimedTrack> prepareTimed(
-    TimedTest test, {
+  Future<PreparedTrack> prepare(
+    AudioProgram program, {
     void Function(String step)? onProgress,
-  }) async => const PreparedTimedTrack(path: 'fake_timed.wav', leadIn: 10);
+  }) async {
+    programs.add(program);
+    return PreparedTrack(path: 'fake.wav', program: program);
+  }
 }
 
 /// Lecteur piloté par le test.

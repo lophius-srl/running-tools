@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/beep_player.dart';
 import '../../audio/providers.dart';
+import '../../audio/test_programs.dart';
 import '../../audio/track_service.dart';
 import '../../data/providers.dart';
 import '../../device/screen_wake_lock.dart';
@@ -31,7 +32,7 @@ class _TimedRunPageState extends ConsumerState<TimedRunPage> {
   final _subscriptions = <StreamSubscription<Object?>>[];
   final _distance = TextEditingController();
 
-  PreparedTimedTrack? _track;
+  PreparedTrack? _track;
   String _status = 'Préparation de la piste…';
   String? _error;
   var _duckOthers = true;
@@ -54,8 +55,8 @@ class _TimedRunPageState extends ConsumerState<TimedRunPage> {
       final preferences = await ref.read(preferencesRepositoryProvider.future);
       _duckOthers = await preferences.duckOthers();
       final service = await ref.read(trackServiceProvider.future);
-      final track = await service.prepareTimed(
-        widget.test,
+      final track = await service.prepare(
+        timedTestProgram(widget.test),
         onProgress: (step) {
           if (mounted) setState(() => _status = step);
         },
@@ -99,9 +100,7 @@ class _TimedRunPageState extends ConsumerState<TimedRunPage> {
   @override
   Widget build(BuildContext context) {
     final track = _track;
-    final testTime = track == null
-        ? 0.0
-        : _position.inMilliseconds / 1000 - track.leadIn;
+    final testTime = track == null ? 0.0 : track.activityTimeAt(_position);
     final finished = testTime >= widget.test.duration.inSeconds;
 
     final page = Scaffold(

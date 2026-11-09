@@ -32,7 +32,7 @@ void main() {
 
   testWidgets('décompte puis temps restant', (tester) async {
     await pumpPage(tester);
-    expect(player.calls, contains('load fake_timed.wav'));
+    expect(player.calls, contains('load fake.wav'));
     expect(wakeLock.enabled, isTrue);
     expect(find.text('Départ dans 10 s'), findsOneWidget);
 

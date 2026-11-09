@@ -1,8 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:running_tools/audio/timed_track.dart';
-import 'package:running_tools/audio/track_renderer.dart';
+import 'package:running_tools/audio/announcements.dart';
+import 'package:running_tools/audio/program_renderer.dart';
+import 'package:running_tools/audio/test_programs.dart';
 import 'package:running_tools/domain/beep_schedule.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/timed_test.dart';
@@ -30,22 +31,27 @@ void main() {
       const StageProtocol.vameval(markerSpacingM: 23.77),
       duration: const Duration(minutes: 3),
     );
-    final track = TrackRenderer().render(
-      schedule,
-      AnnouncementClips(
-        intro: voice(30000),
-        stages: {2: voice(15000), 3: voice(16000)},
-        end: voice(9000),
-      ),
+    final track = ProgramRenderer().render(
+      stagedTestProgram(schedule, testName: 'Test VAMEVAL'),
+      {
+        introAnnouncement('Test VAMEVAL', 8): voice(30000),
+        stageAnnouncement(2, 8.5): voice(15000),
+        stageAnnouncement(3, 9): voice(16000),
+        endAnnouncement: voice(9000),
+      },
     );
     expect(track.length, 22050 * (10 + 180 + 4));
     expect(fingerprint(track), '3938f2080b0b5ab2');
   });
 
   test('piste demi-Cooper inchangée', () {
-    final track = renderTimedTrack(TimedTest.halfCooper, {
-      for (final kind in TimedCueKind.values) kind: voice(10000 + kind.index),
-    });
+    final track = ProgramRenderer().render(
+      timedTestProgram(TimedTest.halfCooper),
+      {
+        for (final kind in TimedCueKind.values)
+          timedCueText(TimedTest.halfCooper, kind): voice(10000 + kind.index),
+      },
+    );
     expect(fingerprint(track), '6da9e6d292498249');
   });
 }

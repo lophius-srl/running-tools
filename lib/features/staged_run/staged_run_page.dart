@@ -6,9 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../audio/announcements.dart';
 import '../../audio/beep_player.dart';
 import '../../audio/providers.dart';
+import '../../audio/test_programs.dart';
 import '../../audio/track_service.dart';
 import '../../data/providers.dart';
 import '../../device/screen_wake_lock.dart';
+import '../../domain/beep_schedule.dart';
 import '../../domain/stage_protocol.dart';
 import '../../domain/staged_outcome.dart';
 import '../../domain/staged_test_setup.dart';
@@ -33,6 +35,10 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
   final _subscriptions = <StreamSubscription<Object?>>[];
 
   PreparedTrack? _track;
+  late final BeepSchedule _schedule = BeepSchedule.generate(
+    widget.setup.protocol,
+    duration: widget.setup.maxDuration,
+  );
   String _status = 'Préparation de la piste…';
   String? _error;
   var _duckOthers = true;
@@ -57,7 +63,7 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
       _duckOthers = await preferences.duckOthers();
       final service = await ref.read(trackServiceProvider.future);
       final track = await service.prepare(
-        widget.setup,
+        stagedTestProgram(_schedule, testName: widget.setup.test.label),
         onProgress: (step) {
           if (mounted) setState(() => _status = step);
         },
@@ -81,13 +87,9 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
 
   /// Arrête la piste et calcule le palier atteint depuis la position.
   Future<void> _dropOut(PreparedTrack track) async {
-    final testTime = track.renderer.testTimeAt(_player.position);
+    final testTime = track.activityTimeAt(_player.position);
     await _player.pause();
-    final outcome = StagedOutcome.at(
-      widget.setup.test,
-      track.schedule,
-      testTime,
-    );
+    final outcome = StagedOutcome.at(widget.setup.test, _schedule, testTime);
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
@@ -125,6 +127,7 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
                 : _Running(
                     test: widget.setup.test,
                     track: track,
+                    schedule: _schedule,
                     position: _position,
                     voiceError: track.voiceError,
                   ),
@@ -179,12 +182,14 @@ class _Running extends StatelessWidget {
   const _Running({
     required this.test,
     required this.track,
+    required this.schedule,
     required this.position,
     required this.voiceError,
   });
 
   final StagedTest test;
   final PreparedTrack track;
+  final BeepSchedule schedule;
   final Duration position;
   final String? voiceError;
 
@@ -192,10 +197,10 @@ class _Running extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final testTime = track.renderer.testTimeAt(position);
-    final finished = testTime >= track.schedule.durationS;
-    final stage = track.schedule.positionAt(testTime);
-    final protocol = track.schedule.protocol;
+    final testTime = track.activityTimeAt(position);
+    final finished = testTime >= schedule.durationS;
+    final stage = schedule.positionAt(testTime);
+    final protocol = schedule.protocol;
     final nextStageInS = testTime < 0
         ? protocol.stageSeconds - testTime
         : (1 - stage.fractionOfStage) * protocol.stageSeconds;
