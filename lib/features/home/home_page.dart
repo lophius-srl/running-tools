@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../app_theme.dart';
 import '../common/coming_soon_page.dart';
+import '../history/history_page.dart';
 import '../staged_setup/staged_setup_page.dart';
 import '../timed_run/timed_run_page.dart';
 import 'home_entry.dart';
@@ -18,6 +19,7 @@ class HomePage extends StatelessWidget {
         builder: (_) => switch ((stagedTest, timedTest)) {
           (final staged?, _) => StagedSetupPage(test: staged),
           (_, final timed?) => TimedRunPage(test: timed),
+          _ when entry == HomeEntry.history => const HistoryPage(),
           _ => ComingSoonPage(title: entry.label),
         },
       ),
