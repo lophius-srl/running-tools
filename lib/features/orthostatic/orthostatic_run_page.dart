@@ -8,14 +8,21 @@ import '../../audio/orthostatic_program.dart';
 import '../../audio/providers.dart';
 import '../../audio/track_service.dart';
 import '../../data/providers.dart';
+import '../../device/heart_rate_monitor.dart';
 import '../../device/screen_wake_lock.dart';
 import '../../domain/orthostatic.dart';
 import '../common/run_widgets.dart';
 import 'orthostatic_page.dart';
 
-/// Test guidé à la voix ; comptage manuel des pulsations (15 s × 4).
+/// Test guidé à la voix. Ceinture Bluetooth : FC mesurée en continu ;
+/// manuel (ou mesures insuffisantes) : comptage des pulsations 15 s × 4.
 class OrthostaticRunPage extends ConsumerStatefulWidget {
-  const OrthostaticRunPage({super.key});
+  const OrthostaticRunPage({
+    super.key,
+    this.source = HeartRateSourceKind.manual,
+  });
+
+  final HeartRateSourceKind source;
 
   static const protocol = OrthostaticProtocol();
 
@@ -28,6 +35,21 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
   late final ScreenWakeLock _wakeLock = ref.read(screenWakeLockProvider);
   final _subscriptions = <StreamSubscription<Object?>>[];
   final _counts = [for (var i = 0; i < 3; i++) TextEditingController()];
+
+  late final HeartRateMonitor? _monitor =
+      widget.source == HeartRateSourceKind.bluetooth
+      ? ref.read(heartRateMonitorFactoryProvider)()
+      : null;
+  StreamSubscription<int>? _bpmSubscription;
+  StreamSubscription<List<HeartRateDevice>>? _scanSubscription;
+  var _devices = <HeartRateDevice>[];
+  HeartRateDevice? _connected;
+  var _connecting = false;
+  int? _liveBpm;
+  final _samples = <HeartRateSample>[];
+
+  /// Mesures continues insuffisantes : on bascule sur le comptage manuel.
+  var _fallbackToManual = false;
 
   PreparedTrack? _track;
   String? _error;
@@ -52,8 +74,13 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
     try {
       final service = await ref.read(trackServiceProvider.future);
       final track = await service.prepare(
-        orthostaticProgram(_protocol, manual: true),
+        orthostaticProgram(_protocol, manual: _monitor == null),
       );
+      if (_monitor case final monitor?) {
+        _scanSubscription = monitor.scan().listen(
+          (devices) => setState(() => _devices = devices),
+        );
+      }
       // Les consignes passent par-dessus une éventuelle musique, baissée.
       await _player.configure(duckOthers: true);
       await _player.load(track.path);
@@ -65,15 +92,50 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
     }
   }
 
-  Future<void> _save() async {
-    final values = [for (final c in _counts) int.tryParse(c.text.trim())];
-    if (values.any((v) => v == null || v <= 0)) return;
-    final result = OrthostaticResult.fromCounts(
-      lying15s: values[0]!,
-      standingPeak15s: values[1]!,
-      standingStable15s: values[2]!,
+  Future<void> _connect(HeartRateDevice device) async {
+    final monitor = _monitor!;
+    setState(() => _connecting = true);
+    try {
+      await monitor.connect(device);
+      _bpmSubscription = monitor.bpm.listen(_onBpm);
+      if (mounted) setState(() => _connected = device);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Connexion impossible : $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _connecting = false);
+    }
+  }
+
+  void _onBpm(int bpm) {
+    final t = _track?.activityTimeAt(_player.position) ?? -1;
+    setState(() => _liveBpm = bpm);
+    if (_playing && t >= 0) {
+      _samples.add((
+        time: Duration(milliseconds: (t * 1000).round()),
+        bpm: bpm,
+      ));
+    }
+  }
+
+  /// Fin du test avec la ceinture : résultat direct, sinon comptages.
+  Future<void> _finishWithSamples() async {
+    final result = OrthostaticResult.fromSamples(
+      _samples,
+      protocol: _protocol,
       date: DateTime.now(),
+      source: HeartRateSourceKind.bluetooth,
     );
+    if (result == null) {
+      setState(() => _fallbackToManual = true);
+      return;
+    }
+    await _store(result);
+  }
+
+  Future<void> _store(OrthostaticResult result) async {
     final repo = await ref.read(orthostaticRepositoryProvider.future);
     final previous = await repo.all();
     await repo.add(result);
@@ -85,6 +147,19 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
     }
   }
 
+  Future<void> _save() async {
+    final values = [for (final c in _counts) int.tryParse(c.text.trim())];
+    if (values.any((v) => v == null || v <= 0)) return;
+    await _store(
+      OrthostaticResult.fromCounts(
+        lying15s: values[0]!,
+        standingPeak15s: values[1]!,
+        standingStable15s: values[2]!,
+        date: DateTime.now(),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     for (final s in _subscriptions) {
@@ -92,6 +167,12 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
     }
     for (final c in _counts) {
       c.dispose();
+    }
+    _bpmSubscription?.cancel();
+    _scanSubscription?.cancel();
+    if (_monitor case final monitor?) {
+      monitor.stopScan();
+      monitor.disconnect();
     }
     _wakeLock.disable();
     _player.stop().whenComplete(_player.dispose);
@@ -128,8 +209,34 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
                 ),
               ],
             )
+          : _monitor != null && _connected == null
+          ? _DevicePicker(
+              devices: _devices,
+              connecting: _connecting,
+              onSelect: _connect,
+              onManual: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute<void>(
+                  builder: (_) => const OrthostaticRunPage(),
+                ),
+              ),
+            )
+          : finished && (_monitor == null || _fallbackToManual)
+          ? _CountsForm(
+              counts: _counts,
+              onSave: _save,
+              note: _fallbackToManual
+                  ? 'La ceinture n’a pas transmis assez de mesures : saisis '
+                        'tes comptages si tu les as faits.'
+                  : null,
+            )
           : finished
-          ? _CountsForm(counts: _counts, onSave: _save)
+          ? Center(
+              child: FilledButton(
+                onPressed: _finishWithSamples,
+                style: FilledButton.styleFrom(minimumSize: const Size(240, 64)),
+                child: const Text('Voir le résultat'),
+              ),
+            )
           : ListView(
               padding: const EdgeInsets.all(24),
               children: [
@@ -154,12 +261,22 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Lance le test, pose le téléphone à côté de toi et laisse-toi '
-                  'guider par la voix. Pour compter, pose deux doigts sur ton '
-                  'poignet ou ton cou.',
-                  textAlign: TextAlign.center,
-                ),
+                if (_connected != null)
+                  Text(
+                    '♥ ${_liveBpm ?? '…'} bpm · ${_connected!.name}',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.colorScheme.error,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  )
+                else
+                  const Text(
+                    'Lance le test, pose le téléphone à côté de toi et '
+                    'laisse-toi guider par la voix. Pour compter, pose deux '
+                    'doigts sur ton poignet ou ton cou.',
+                    textAlign: TextAlign.center,
+                  ),
                 const SizedBox(height: 24),
                 SizedBox.square(
                   dimension: 96,
@@ -178,7 +295,7 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
   String _instruction(Duration elapsed, {required bool started}) {
     if (!started) return 'Allonge-toi sur le dos';
     if (elapsed < _protocol.standUpAt) {
-      return manualCountStarts(_protocol).first <= elapsed
+      return _monitor == null && manualCountStarts(_protocol).first <= elapsed
           ? 'Compte tes pulsations'
           : 'Allongé, détends-toi';
     }
@@ -187,10 +304,11 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
 }
 
 class _CountsForm extends StatefulWidget {
-  const _CountsForm({required this.counts, required this.onSave});
+  const _CountsForm({required this.counts, required this.onSave, this.note});
 
   final List<TextEditingController> counts;
   final VoidCallback onSave;
+  final String? note;
 
   @override
   State<_CountsForm> createState() => _CountsFormState();
@@ -212,6 +330,14 @@ class _CountsFormState extends State<_CountsForm> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (widget.note case final note?)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              note,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
         const Text(
           'Saisis les pulsations comptées pendant chaque top de 15 s :',
         ),
@@ -239,4 +365,54 @@ class _CountsFormState extends State<_CountsForm> {
       ],
     );
   }
+}
+
+/// Choix de la ceinture cardio.
+class _DevicePicker extends StatelessWidget {
+  const _DevicePicker({
+    required this.devices,
+    required this.connecting,
+    required this.onSelect,
+    required this.onManual,
+  });
+
+  final List<HeartRateDevice> devices;
+  final bool connecting;
+  final ValueChanged<HeartRateDevice> onSelect;
+  final VoidCallback onManual;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      const Text(
+        'Mets ta ceinture (électrodes humidifiées), puis choisis-la :',
+      ),
+      const SizedBox(height: 12),
+      if (devices.isEmpty)
+        const ListTile(
+          leading: CircularProgressIndicator(),
+          title: Text('Recherche des ceintures…'),
+        ),
+      for (final d in devices)
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.bluetooth),
+            title: Text(d.name, style: const TextStyle(fontSize: 18)),
+            trailing: connecting
+                ? const SizedBox.square(
+                    dimension: 24,
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  )
+                : const Icon(Icons.chevron_right),
+            onTap: connecting ? null : () => onSelect(d),
+          ),
+        ),
+      const SizedBox(height: 16),
+      TextButton(
+        onPressed: onManual,
+        child: const Text('Pas de ceinture : compter à la main'),
+      ),
+    ],
+  );
 }

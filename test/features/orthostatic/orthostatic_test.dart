@@ -10,11 +10,13 @@ void main() {
   late FakeOrthostaticRepository repo;
   late FakeReminderScheduler reminders;
   late FakeBeepPlayer player;
+  late FakeHeartRateMonitor belt;
 
   setUp(() {
     repo = FakeOrthostaticRepository();
     reminders = FakeReminderScheduler();
     player = FakeBeepPlayer();
+    belt = FakeHeartRateMonitor();
   });
 
   Future<void> pumpPage(WidgetTester tester) async {
@@ -28,6 +30,7 @@ void main() {
           orthostatic: repo,
           reminders: reminders,
           player: player,
+          heartRate: belt,
         ),
         child: const MaterialApp(home: OrthostaticPage()),
       ),
@@ -54,6 +57,8 @@ void main() {
     repo.results.addAll([past(1, 50, 70), past(8, 51, 71), past(15, 49, 69)]);
     await pumpPage(tester);
     await tester.tap(find.text('Faire le test (5 min)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Comptage manuel'));
     await tester.pumpAndSettle();
     expect(find.text('Allonge-toi sur le dos'), findsOneWidget);
 
@@ -92,5 +97,64 @@ void main() {
     await tester.pumpAndSettle();
     expect(reminders.weekly, isEmpty);
     expect(repo.savedReminder, isNull);
+  });
+
+  testWidgets('ceinture Bluetooth : FC en direct et résultat automatique', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+    await tester.tap(find.text('Faire le test (5 min)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ceinture Bluetooth'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ceinture test'));
+    await tester.pumpAndSettle();
+    expect(belt.calls, contains('connect belt-1'));
+
+    await player.play();
+    // Lead-in de 2 s : temps du test = position − 2 s.
+    void at(int seconds, int bpm) {
+      player.emitPosition(Duration(seconds: seconds + 2));
+      belt.emit(bpm);
+    }
+
+    for (var t = 150; t < 180; t += 5) {
+      at(t, 52);
+    }
+    for (var t = 180; t < 210; t += 5) {
+      at(t, t == 190 ? 95 : 85);
+    }
+    for (var t = 270; t < 300; t += 5) {
+      at(t, 74);
+    }
+    await tester.pump();
+    expect(find.textContaining('74 bpm'), findsOneWidget);
+
+    player.emitPosition(const Duration(minutes: 5, seconds: 3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Voir le résultat'));
+    await tester.pumpAndSettle();
+
+    final r = repo.results.single;
+    expect((r.lyingBpm, r.standingPeakBpm, r.standingStableBpm), (52, 95, 74));
+    expect(r.source, HeartRateSourceKind.bluetooth);
+  });
+
+  testWidgets('ceinture muette : bascule sur la saisie manuelle', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+    await tester.tap(find.text('Faire le test (5 min)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ceinture Bluetooth'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ceinture test'));
+    await tester.pumpAndSettle();
+    player.emitPosition(const Duration(minutes: 5, seconds: 3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Voir le résultat'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('pas transmis assez'), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(3));
   });
 }
