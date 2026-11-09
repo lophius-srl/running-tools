@@ -12,7 +12,7 @@ On veut la rigueur d'un vrai projet (traçabilité, relecture, tests, déploieme
 - **Flux** : une issue → une branche → une PR → CI verte → review (agent + humain) → merge → déploiement automatique.
 - **Commits conventionnels**, versions et changelog générés par release-please.
 - **Agents** : product-owner, architect, developer, qa, reviewer (`.claude/agents/`).
-  L'humain reste seul à merger.
+  L'humain reste seul à merger (assoupli par l'ADR 0005 : merge par l'agent sur demande explicite).
 
 ## Conséquences
 - Rien n'arrive sur `main` sans PR ni CI verte.

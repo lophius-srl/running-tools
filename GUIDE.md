@@ -33,7 +33,7 @@ Compte environ **1 heure** pour la première installation, puis **5 minutes** pa
 
 > **Public ou privé ?** Sur le plan GitHub gratuit, la protection de branche (règle « PR et CI obligatoires »)
 > et CodeQL ne sont disponibles que pour les **repos publics**. En privé, tu gardes tout le reste ;
-> la discipline repose alors sur toi (et sur l'interdiction de merge donnée aux agents).
+> la discipline repose alors sur toi (et sur la règle : un agent ne merge que sur ta demande explicite).
 > Les étudiants peuvent obtenir GitHub Pro gratuitement avec le GitHub Student Pack.
 
 ---
@@ -187,8 +187,8 @@ Quand tu veux publier une version, merge cette PR : version incrémentée, `CHAN
 - Les agents sont de simples fichiers Markdown dans `.claude/agents/` : modifie leurs consignes librement.
 - Ajoute un agent spécialisé si besoin (ex. `ux-designer`, `security`, `docs-writer`) : copie un fichier existant et adapte-le.
 - Les commandes `/kickoff`, `/feature`, `/work` et `/review` sont dans `.claude/commands/`.
-- `.claude/settings.json` autorise les commandes sans risque et **interdit** aux agents de merger, de forcer un push
-  ou de lire `.env`.
+- `.claude/settings.json` autorise les commandes sans risque et **interdit** aux agents de forcer un push
+  ou de lire `.env`. Le merge n'est permis à l'agent que sur ta demande explicite (ADR 0005).
 
 ## Garder le contrôle des coûts
 - La review GitHub ne tourne qu'à la demande : onglet *Actions* → *Claude Code Review* → *Run workflow*.
