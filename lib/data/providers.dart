@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'checklist_repository.dart';
+import 'fartlek_repository.dart';
 import 'history_repository.dart';
 import 'preferences_repository.dart';
 import 'recent_names_repository.dart';
@@ -43,4 +44,9 @@ final recentNamesRepositoryProvider = FutureProvider<RecentNamesRepository>(
 final checklistRepositoryProvider = FutureProvider<ChecklistRepository>(
   (ref) async =>
       JsonChecklistRepository(await getApplicationDocumentsDirectory()),
+);
+
+final fartlekRepositoryProvider = FutureProvider<FartlekRepository>(
+  (ref) async =>
+      JsonFartlekRepository(await getApplicationDocumentsDirectory()),
 );

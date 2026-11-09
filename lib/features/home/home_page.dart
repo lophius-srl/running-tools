@@ -7,6 +7,7 @@ import '../../domain/stage_protocol.dart';
 import '../common/decimal_text.dart';
 import '../checklists/checklists_page.dart';
 import '../club/club_setup_page.dart';
+import '../fartlek/fartlek_setup_page.dart';
 import '../history/history_page.dart';
 import '../metronome/metronome_page.dart';
 import '../lane_calculator/lane_calculator_page.dart';
@@ -79,6 +80,8 @@ class HomePage extends StatelessWidget {
         page = const MultiTimerSetupPage();
       case HomeEntry.club:
         page = const ClubSetupPage();
+      case HomeEntry.fartlek:
+        page = const FartlekSetupPage();
       case HomeEntry.setup:
         _openSetupAssistant(context);
         return;

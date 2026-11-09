@@ -9,6 +9,7 @@ import 'package:running_tools/audio/providers.dart';
 import 'package:running_tools/audio/audio_program.dart';
 import 'package:running_tools/audio/track_service.dart';
 import 'package:running_tools/data/checklist_repository.dart';
+import 'package:running_tools/data/fartlek_repository.dart';
 import 'package:running_tools/data/history_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
 import 'package:running_tools/data/providers.dart';
@@ -271,6 +272,16 @@ class FakeReminderScheduler implements ReminderScheduler {
   Future<void> cancel(int id) async => scheduled.remove(id);
 }
 
+class FakeFartlekRepository implements FartlekRepository {
+  final list = <RecentFartlek>[];
+
+  @override
+  Future<List<RecentFartlek>> recent() async => [...list];
+
+  @override
+  Future<void> remember(RecentFartlek fartlek) async => list.insert(0, fartlek);
+}
+
 class FakeScreenWakeLock implements ScreenWakeLock {
   bool enabled = false;
 
@@ -315,7 +326,11 @@ List<Override> fakeOverrides({
   FakeRecentNamesRepository? recentNames,
   FakeChecklistRepository? checklists,
   FakeReminderScheduler? reminders,
+  FakeFartlekRepository? fartleks,
 }) => [
+  fartlekRepositoryProvider.overrideWith(
+    (ref) async => fartleks ?? FakeFartlekRepository(),
+  ),
   checklistRepositoryProvider.overrideWith(
     (ref) async => checklists ?? FakeChecklistRepository(),
   ),
