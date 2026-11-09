@@ -19,7 +19,6 @@ format:
 test:
 	flutter test
 
-# `flutter build bundle` ne dépend pas de la plateforme (compatible CI Linux).
-# Build iOS complet en local : flutter build ios --no-codesign
+# App iOS uniquement : nécessite macOS (la CI doit tourner sur un runner macOS).
 build:
-	flutter build bundle
+	flutter build ios --no-codesign

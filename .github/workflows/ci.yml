@@ -16,8 +16,9 @@ jobs:
   checks:
     # Ce nom de job ("checks") est le "status check" exigé par la règle de branche.
     name: checks
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # macOS : l'app est iOS uniquement (make build compile pour iOS).
+    runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +46,14 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Autres stacks (Flutter, Rust, Java…) : ajoute ici l'action "setup-*" correspondante.
+      - name: Setup Flutter
+        if: hashFiles('pubspec.yaml') != ''
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # Autres stacks (Rust, Java…) : ajoute ici l'action "setup-*" correspondante.
 
       # --- Les étapes qualité passent toutes par le Makefile ---
       - name: Install
