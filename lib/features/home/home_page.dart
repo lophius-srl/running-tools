@@ -6,6 +6,7 @@ import '../../domain/marker_spacing.dart';
 import '../../domain/stage_protocol.dart';
 import '../common/decimal_text.dart';
 import '../history/history_page.dart';
+import '../lane_calculator/lane_calculator_page.dart';
 import '../setup_assistant/spacing_assistant_page.dart';
 import '../staged_setup/staged_setup_page.dart';
 import '../timed_run/timed_run_page.dart';
@@ -61,6 +62,8 @@ class HomePage extends StatelessWidget {
         page = StagedSetupPage(test: entry.stagedTest!);
       case HomeEntry.history:
         page = const HistoryPage();
+      case HomeEntry.lanes:
+        page = const LaneCalculatorPage();
       case HomeEntry.setup:
         _openSetupAssistant(context);
         return;
