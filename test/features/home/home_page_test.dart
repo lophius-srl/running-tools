@@ -35,7 +35,7 @@ void main() {
     expect(find.text('Réglages du test'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
-    expect(find.text('Tests'), findsOneWidget);
+    expect(find.text('VAMEVAL'), findsOneWidget);
   });
 
   testWidgets('Cooper ouvre directement le chrono', (tester) async {

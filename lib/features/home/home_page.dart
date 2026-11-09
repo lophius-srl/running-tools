@@ -8,6 +8,7 @@ import '../common/decimal_text.dart';
 import '../history/history_page.dart';
 import '../lane_calculator/lane_calculator_page.dart';
 import '../setup_assistant/spacing_assistant_page.dart';
+import '../workouts/workouts_page.dart';
 import '../staged_setup/staged_setup_page.dart';
 import '../timed_run/timed_run_page.dart';
 import 'home_entry.dart';
@@ -64,6 +65,8 @@ class HomePage extends StatelessWidget {
         page = const HistoryPage();
       case HomeEntry.lanes:
         page = const LaneCalculatorPage();
+      case HomeEntry.workouts:
+        page = const WorkoutsPage();
       case HomeEntry.setup:
         _openSetupAssistant(context);
         return;
@@ -101,6 +104,16 @@ class HomePage extends StatelessWidget {
                 children: [
                   for (final entry in HomeEntry.tests)
                     _TestCard(entry: entry, onTap: () => _open(context, entry)),
+                ],
+              ),
+            ),
+            SliverToBoxAdapter(child: section('Entraînement')),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList.list(
+                children: [
+                  for (final entry in HomeEntry.training)
+                    _ToolCard(entry: entry, onTap: () => _open(context, entry)),
                 ],
               ),
             ),

@@ -33,6 +33,10 @@ enum HomeEntry {
   lanes('Couloirs', 'Distance et allure par couloir', Icons.view_week, [
     Color(0xFF1E40AF),
     Color(0xFF0EA5E9),
+  ]),
+  workouts('Séances', 'Fractionné adapté à ta VMA', Icons.repeat, [
+    Color(0xFF4338CA),
+    Color(0xFF0EA5E9),
   ]);
 
   const HomeEntry(this.label, this.subtitle, this.icon, this.gradient);
@@ -43,7 +47,8 @@ enum HomeEntry {
   final List<Color> gradient;
 
   static const tests = [cooper, halfCooper, vameval, lucLeger];
-  static const tools = [history, setup, lanes];
+  static const training = [workouts, lanes];
+  static const tools = [history, setup];
 
   /// Entrée de l'accueil d'un test par paliers (pour reprendre ses couleurs).
   static HomeEntry ofStagedTest(StagedTest test) => switch (test) {

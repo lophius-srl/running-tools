@@ -11,11 +11,13 @@ import 'package:running_tools/data/history_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
 import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/data/setup_repository.dart';
+import 'package:running_tools/data/workout_repository.dart';
 import 'package:running_tools/device/screen_wake_lock.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
 import 'package:running_tools/domain/test_record.dart';
+import 'package:running_tools/domain/workout.dart';
 import 'package:running_tools/measure/distance_measurer.dart';
 
 /// Dépôt de réglages en mémoire.
@@ -128,6 +130,24 @@ class FakeHistoryRepository implements TestHistoryRepository {
       records.removeWhere((r) => r.id == id);
 }
 
+class FakeWorkoutRepository implements WorkoutRepository {
+  final workouts = <Workout>[];
+
+  @override
+  Future<List<Workout>> all() async => [...workouts];
+
+  @override
+  Future<void> save(Workout workout) async {
+    workouts
+      ..removeWhere((w) => w.id == workout.id)
+      ..add(workout);
+  }
+
+  @override
+  Future<void> delete(String id) async =>
+      workouts.removeWhere((w) => w.id == id);
+}
+
 class FakeScreenWakeLock implements ScreenWakeLock {
   bool enabled = false;
 
@@ -163,7 +183,12 @@ List<Override> fakeOverrides({
   FakeScreenWakeLock? wakeLock,
   FakeHistoryRepository? history,
   DistanceMeasurer? measurer,
+  FakeWorkoutRepository? workouts,
+  FakeTrackService? tracks,
 }) => [
+  workoutRepositoryProvider.overrideWith(
+    (ref) async => workouts ?? FakeWorkoutRepository(),
+  ),
   distanceMeasurerProvider.overrideWithValue(
     measurer ?? FakeDistanceMeasurer(null),
   ),
@@ -177,6 +202,8 @@ List<Override> fakeOverrides({
   preferencesRepositoryProvider.overrideWith(
     (ref) async => preferences ?? FakePreferencesRepository(),
   ),
-  trackServiceProvider.overrideWith((ref) async => FakeTrackService()),
+  trackServiceProvider.overrideWith(
+    (ref) async => tracks ?? FakeTrackService(),
+  ),
   beepPlayerFactoryProvider.overrideWithValue(() => player ?? FakeBeepPlayer()),
 ];
