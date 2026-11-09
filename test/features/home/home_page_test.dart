@@ -48,6 +48,8 @@ void main() {
   testWidgets('Historique ouvre la liste des tests', (tester) async {
     await pumpApp(tester);
     await tester.scrollUntilVisible(find.text('Historique'), 100);
+    await tester.ensureVisible(find.text('Historique'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Historique'));
     await tester.pumpAndSettle();
     expect(find.text('Aucun test enregistré'), findsOneWidget);
@@ -58,6 +60,8 @@ void main() {
   ) async {
     await pumpApp(tester);
     await tester.scrollUntilVisible(find.text('Mise en place'), 100);
+    await tester.ensureVisible(find.text('Mise en place'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Mise en place'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Terrain normé'));

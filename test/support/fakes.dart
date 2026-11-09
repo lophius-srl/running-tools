@@ -12,7 +12,9 @@ import 'package:running_tools/data/preferences_repository.dart';
 import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/data/setup_repository.dart';
 import 'package:running_tools/data/workout_repository.dart';
+import 'package:running_tools/device/race_clock.dart';
 import 'package:running_tools/device/screen_wake_lock.dart';
+import 'package:running_tools/device/share_service.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
@@ -148,6 +150,24 @@ class FakeWorkoutRepository implements WorkoutRepository {
       workouts.removeWhere((w) => w.id == id);
 }
 
+/// Horloge pilotée par le test.
+class FakeRaceClock implements RaceClock {
+  var started = false;
+  @override
+  Duration elapsed = Duration.zero;
+
+  @override
+  void start() => started = true;
+}
+
+class FakeShareService implements ShareService {
+  final shared = <String>[];
+
+  @override
+  Future<void> shareText(String text, {String? subject}) async =>
+      shared.add(text);
+}
+
 class FakeScreenWakeLock implements ScreenWakeLock {
   bool enabled = false;
 
@@ -185,7 +205,11 @@ List<Override> fakeOverrides({
   DistanceMeasurer? measurer,
   FakeWorkoutRepository? workouts,
   FakeTrackService? tracks,
+  FakeRaceClock? clock,
+  FakeShareService? share,
 }) => [
+  raceClockFactoryProvider.overrideWithValue(() => clock ?? FakeRaceClock()),
+  shareServiceProvider.overrideWithValue(share ?? FakeShareService()),
   workoutRepositoryProvider.overrideWith(
     (ref) async => workouts ?? FakeWorkoutRepository(),
   ),
