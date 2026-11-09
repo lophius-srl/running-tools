@@ -31,19 +31,23 @@ void main() {
     const vameval = StageProtocol.vameval();
 
     test('dernier palier complet', () {
-      expect(reachedSpeedKmh(vameval, completedStages: 14), 14.5);
+      expect(reachedSpeedKmhFor(vameval, completedStages: 14), 14.5);
     });
 
     test('la fraction est ignorée sans prorata', () {
       expect(
-        reachedSpeedKmh(vameval, completedStages: 14, fractionOfNextStage: 0.5),
+        reachedSpeedKmhFor(
+          vameval,
+          completedStages: 14,
+          fractionOfNextStage: 0.5,
+        ),
         14.5,
       );
     });
 
     test('prorata du palier entamé', () {
       expect(
-        reachedSpeedKmh(
+        reachedSpeedKmhFor(
           vameval,
           completedStages: 14,
           fractionOfNextStage: 0.5,
@@ -55,14 +59,14 @@ void main() {
 
     test('aucun palier complet : refusé', () {
       expect(
-        () => reachedSpeedKmh(vameval, completedStages: 0),
+        () => reachedSpeedKmhFor(vameval, completedStages: 0),
         throwsArgumentError,
       );
     });
 
     test('fraction hors de [0, 1[ : refusée', () {
       expect(
-        () => reachedSpeedKmh(
+        () => reachedSpeedKmhFor(
           vameval,
           completedStages: 3,
           fractionOfNextStage: 1,

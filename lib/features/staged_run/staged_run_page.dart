@@ -9,8 +9,10 @@ import '../../audio/providers.dart';
 import '../../audio/track_service.dart';
 import '../../data/providers.dart';
 import '../../domain/stage_protocol.dart';
+import '../../domain/staged_outcome.dart';
 import '../../domain/staged_test_setup.dart';
 import '../home/home_entry.dart';
+import '../staged_result/staged_result_page.dart';
 
 /// Écran de course d'un test par paliers : prépare puis joue la piste.
 class StagedRunPage extends ConsumerStatefulWidget {
@@ -70,6 +72,23 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
     await preferences.setDuckOthers(value);
   }
 
+  /// Arrête la piste et calcule le palier atteint depuis la position.
+  Future<void> _dropOut(PreparedTrack track) async {
+    final testTime = track.renderer.testTimeAt(_player.position);
+    await _player.pause();
+    final outcome = StagedOutcome.at(
+      widget.setup.test,
+      track.schedule,
+      testTime,
+    );
+    if (!mounted) return;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => StagedResultPage(outcome: outcome),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     for (final s in _subscriptions) {
@@ -99,6 +118,25 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
                     voiceError: track.voiceError,
                   ),
           ),
+          if (track != null && _position > Duration.zero)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: FilledButton.icon(
+                onPressed: () => _dropOut(track),
+                icon: const Icon(Icons.flag, size: 32),
+                label: const Text("J'ai décroché"),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.deepOrange,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(96),
+                  textStyle: Theme.of(context).textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
+              ),
+            ),
           if (track != null)
             _Controls(
               playing: _playing,
