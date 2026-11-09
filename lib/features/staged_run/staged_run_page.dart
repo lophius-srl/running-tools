@@ -8,11 +8,13 @@ import '../../audio/beep_player.dart';
 import '../../audio/providers.dart';
 import '../../audio/track_service.dart';
 import '../../data/providers.dart';
+import '../../device/screen_wake_lock.dart';
 import '../../domain/stage_protocol.dart';
 import '../../domain/staged_outcome.dart';
 import '../../domain/staged_test_setup.dart';
 import '../home/home_entry.dart';
 import '../staged_result/staged_result_page.dart';
+import 'pocket_mode_overlay.dart';
 
 /// Écran de course d'un test par paliers : prépare puis joue la piste.
 class StagedRunPage extends ConsumerStatefulWidget {
@@ -26,6 +28,7 @@ class StagedRunPage extends ConsumerStatefulWidget {
 
 class _StagedRunPageState extends ConsumerState<StagedRunPage> {
   late final BeepPlayer _player = ref.read(beepPlayerFactoryProvider)();
+  late final ScreenWakeLock _wakeLock = ref.read(screenWakeLockProvider);
   final _subscriptions = <StreamSubscription<Object?>>[];
 
   PreparedTrack? _track;
@@ -34,10 +37,13 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
   var _duckOthers = true;
   var _playing = false;
   var _position = Duration.zero;
+  var _pocketMode = false;
 
   @override
   void initState() {
     super.initState();
+    // Écran allumé pendant tout le test, relâché en quittant l'écran.
+    _wakeLock.enable();
     _subscriptions
       ..add(_player.positionStream.listen((p) => setState(() => _position = p)))
       ..add(_player.playingStream.listen((p) => setState(() => _playing = p)));
@@ -94,6 +100,7 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
     for (final s in _subscriptions) {
       s.cancel();
     }
+    _wakeLock.disable();
     // stop() rend la main à la musique avant de libérer le lecteur.
     _player.stop().whenComplete(_player.dispose);
     super.dispose();
@@ -102,7 +109,7 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
   @override
   Widget build(BuildContext context) {
     final track = _track;
-    return Scaffold(
+    final page = Scaffold(
       body: Column(
         children: [
           _Header(setup: widget.setup),
@@ -144,9 +151,22 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
               onPlayPause: _playing ? _player.pause : _player.play,
               onStop: _player.stop,
               onDuckChanged: _playing ? null : _setDuckOthers,
+              onPocketMode: () => setState(() => _pocketMode = true),
             ),
         ],
       ),
+    );
+    if (!_pocketMode || track == null) return page;
+    return Stack(
+      children: [
+        page,
+        Positioned.fill(
+          child: PocketModeOverlay(
+            onDropOut: () => _dropOut(track),
+            onExit: () => setState(() => _pocketMode = false),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -400,6 +420,7 @@ class _Controls extends StatelessWidget {
     required this.onPlayPause,
     required this.onStop,
     required this.onDuckChanged,
+    required this.onPocketMode,
   });
 
   final bool playing;
@@ -407,6 +428,7 @@ class _Controls extends StatelessWidget {
   final VoidCallback onPlayPause;
   final VoidCallback onStop;
   final ValueChanged<bool>? onDuckChanged;
+  final VoidCallback onPocketMode;
 
   @override
   Widget build(BuildContext context) {
@@ -442,7 +464,13 @@ class _Controls extends StatelessWidget {
                     icon: Icon(playing ? Icons.pause : Icons.play_arrow),
                   ),
                 ),
-                const SizedBox(width: 80),
+                const SizedBox(width: 24),
+                IconButton.outlined(
+                  tooltip: 'Mode poche',
+                  iconSize: 32,
+                  onPressed: onPocketMode,
+                  icon: const Icon(Icons.phonelink_lock),
+                ),
               ],
             ),
           ],
