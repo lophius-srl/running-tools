@@ -86,4 +86,19 @@ void main() {
     expect(find.text('21'), findsOneWidget);
     expect(find.text('21 min'), findsOneWidget);
   });
+
+  testWidgets('« Mesurer mes repères » remplit espacement et méthode', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+    await tester.tap(find.text('Mesurer mes repères'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Terrain normé'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tennis'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('23,77'), findsOneWidget);
+    expect(find.text('Terrain normé'), findsOneWidget);
+  });
 }

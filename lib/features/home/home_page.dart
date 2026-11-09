@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app_theme.dart';
-import '../common/coming_soon_page.dart';
+import '../../domain/marker_spacing.dart';
+import '../../domain/stage_protocol.dart';
+import '../common/decimal_text.dart';
 import '../history/history_page.dart';
+import '../setup_assistant/spacing_assistant_page.dart';
 import '../staged_setup/staged_setup_page.dart';
 import '../timed_run/timed_run_page.dart';
 import 'home_entry.dart';
@@ -11,19 +14,58 @@ import 'home_entry.dart';
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
-  void _open(BuildContext context, HomeEntry entry) {
-    final stagedTest = entry.stagedTest;
-    final timedTest = entry.timedTest;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => switch ((stagedTest, timedTest)) {
-          (final staged?, _) => StagedSetupPage(test: staged),
-          (_, final timed?) => TimedRunPage(test: timed),
-          _ when entry == HomeEntry.history => const HistoryPage(),
-          _ => ComingSoonPage(title: entry.label),
-        },
+  /// Mise en place depuis l'accueil : choisir l'espacement, puis le test.
+  Future<void> _openSetupAssistant(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final choice = await navigator.push<SpacingChoice>(
+      MaterialPageRoute(builder: (_) => const SpacingAssistantPage()),
+    );
+    if (choice == null || !context.mounted) return;
+    final test = await showModalBottomSheet<StagedTest>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(
+                'Repères tous les ${formatDecimal(choice.spacingM)} m : '
+                'pour quel test ?',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            for (final t in StagedTest.values)
+              ListTile(
+                leading: Icon(HomeEntry.ofStagedTest(t).icon),
+                title: Text(t.label),
+                onTap: () => Navigator.of(context).pop(t),
+              ),
+          ],
+        ),
       ),
     );
+    if (test == null) return;
+    await navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => StagedSetupPage(test: test, initialChoice: choice),
+      ),
+    );
+  }
+
+  void _open(BuildContext context, HomeEntry entry) {
+    final Widget page;
+    switch (entry) {
+      case HomeEntry.cooper || HomeEntry.halfCooper:
+        page = TimedRunPage(test: entry.timedTest!);
+      case HomeEntry.vameval || HomeEntry.lucLeger:
+        page = StagedSetupPage(test: entry.stagedTest!);
+      case HomeEntry.history:
+        page = const HistoryPage();
+      case HomeEntry.setup:
+        _openSetupAssistant(context);
+        return;
+    }
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
   }
 
   @override
