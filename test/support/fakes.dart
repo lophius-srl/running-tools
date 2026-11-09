@@ -11,6 +11,7 @@ import 'package:running_tools/audio/track_service.dart';
 import 'package:running_tools/data/history_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
 import 'package:running_tools/data/providers.dart';
+import 'package:running_tools/data/recent_names_repository.dart';
 import 'package:running_tools/data/setup_repository.dart';
 import 'package:running_tools/data/workout_repository.dart';
 import 'package:running_tools/device/accelerometer.dart';
@@ -193,6 +194,20 @@ class FakeShareService implements ShareService {
       shared.add(text);
 }
 
+class FakeRecentNamesRepository implements RecentNamesRepository {
+  var names = <String>[];
+
+  @override
+  Future<List<String>> recent() async => [...names];
+
+  @override
+  Future<void> remember(List<String> added) async => names = [
+    ...added,
+    for (final n in names)
+      if (!added.contains(n)) n,
+  ];
+}
+
 class FakeScreenWakeLock implements ScreenWakeLock {
   bool enabled = false;
 
@@ -234,7 +249,11 @@ List<Override> fakeOverrides({
   FakeShareService? share,
   FakeCadenceCoach? coach,
   FakeAccelerometer? accelerometer,
+  FakeRecentNamesRepository? recentNames,
 }) => [
+  recentNamesRepositoryProvider.overrideWith(
+    (ref) async => recentNames ?? FakeRecentNamesRepository(),
+  ),
   raceClockFactoryProvider.overrideWithValue(() => clock ?? FakeRaceClock()),
   shareServiceProvider.overrideWithValue(share ?? FakeShareService()),
   cadenceCoachFactoryProvider.overrideWithValue(

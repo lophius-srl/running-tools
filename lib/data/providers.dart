@@ -3,6 +3,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'history_repository.dart';
 import 'preferences_repository.dart';
+import 'recent_names_repository.dart';
 import 'setup_repository.dart';
 import 'workout_repository.dart';
 
@@ -32,3 +33,8 @@ final lastVmaProvider = FutureProvider<double?>((ref) async {
   final records = await history.all();
   return records.isEmpty ? null : records.first.vmaKmh;
 });
+
+final recentNamesRepositoryProvider = FutureProvider<RecentNamesRepository>(
+  (ref) async =>
+      JsonRecentNamesRepository(await getApplicationDocumentsDirectory()),
+);
