@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/stage_protocol.dart';
+import '../../domain/test_record.dart';
 import '../../domain/timed_test.dart';
 
 /// Entrées de l'écran d'accueil.
@@ -44,6 +45,13 @@ enum HomeEntry {
   static HomeEntry ofStagedTest(StagedTest test) => switch (test) {
     StagedTest.vameval => vameval,
     StagedTest.lucLeger => lucLeger,
+  };
+
+  static HomeEntry ofKind(TestKind kind) => switch (kind) {
+    TestKind.cooper => cooper,
+    TestKind.halfCooper => halfCooper,
+    TestKind.vameval => vameval,
+    TestKind.lucLeger => lucLeger,
   };
 
   static HomeEntry ofTimedTest(TimedTest test) => switch (test) {

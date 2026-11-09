@@ -44,4 +44,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Départ dans 10 s'), findsOneWidget);
   });
+
+  testWidgets('Historique ouvre la liste des tests', (tester) async {
+    await pumpApp(tester);
+    await tester.scrollUntilVisible(find.text('Historique'), 100);
+    await tester.tap(find.text('Historique'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aucun test enregistré'), findsOneWidget);
+  });
 }
