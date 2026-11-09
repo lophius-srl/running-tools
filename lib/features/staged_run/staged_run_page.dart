@@ -90,7 +90,9 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
     );
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => ResultPage.staged(outcome)),
+      MaterialPageRoute<void>(
+        builder: (_) => ResultPage.staged(outcome, widget.setup),
+      ),
     );
   }
 

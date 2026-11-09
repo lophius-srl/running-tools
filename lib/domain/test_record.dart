@@ -1,5 +1,6 @@
 import 'measurement_method.dart';
 import 'stage_protocol.dart';
+import 'timed_test.dart';
 
 /// Les 4 tests proposés par l'app.
 enum TestKind {
@@ -15,6 +16,11 @@ enum TestKind {
   static TestKind ofStaged(StagedTest test) => switch (test) {
     StagedTest.vameval => vameval,
     StagedTest.lucLeger => lucLeger,
+  };
+
+  static TestKind ofTimed(TimedTest test) => switch (test) {
+    TimedTest.cooper => cooper,
+    TimedTest.halfCooper => halfCooper,
   };
 }
 
