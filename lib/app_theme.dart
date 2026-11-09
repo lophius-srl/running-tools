@@ -15,6 +15,8 @@ abstract final class AppTheme {
     final scheme = ColorScheme.fromSeed(
       seedColor: AppColors.blue,
       brightness: brightness,
+      // Garde un bleu vif plutôt que la version adoucie par défaut.
+      dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
     );
     return ThemeData(
       colorScheme: scheme,

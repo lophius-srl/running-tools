@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/stage_protocol.dart';
+
 /// Entrées de l'écran d'accueil.
 enum HomeEntry {
   cooper('Cooper', 'Course de 12 min', Icons.timer, [
@@ -36,4 +38,17 @@ enum HomeEntry {
 
   static const tests = [cooper, halfCooper, vameval, lucLeger];
   static const tools = [history, setup];
+
+  /// Entrée de l'accueil d'un test par paliers (pour reprendre ses couleurs).
+  static HomeEntry ofStagedTest(StagedTest test) => switch (test) {
+    StagedTest.vameval => vameval,
+    StagedTest.lucLeger => lucLeger,
+  };
+
+  /// Test par paliers correspondant, s'il y en a un.
+  StagedTest? get stagedTest => switch (this) {
+    vameval => StagedTest.vameval,
+    lucLeger => StagedTest.lucLeger,
+    _ => null,
+  };
 }
