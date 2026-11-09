@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'spike/audio_spike_page.dart';
+import 'spike/spike_menu_page.dart';
 
 void main() => runApp(const RunningToolsApp());
 
@@ -14,7 +14,7 @@ class RunningToolsApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
       ),
-      home: const AudioSpikePage(),
+      home: const SpikeMenuPage(),
     );
   }
 }
