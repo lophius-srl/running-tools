@@ -35,6 +35,14 @@ class FakePreferencesRepository implements PreferencesRepository {
 
   @override
   Future<void> setDuckOthers(bool value) async => duck = value;
+
+  double? shoeLength;
+
+  @override
+  Future<double?> shoeLengthM() async => shoeLength;
+
+  @override
+  Future<void> setShoeLengthM(double value) async => shoeLength = value;
 }
 
 /// Piste instantanée, sans audio.
