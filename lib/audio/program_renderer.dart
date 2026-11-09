@@ -42,6 +42,7 @@ class ProgramRenderer {
       Cue.countdown: beep(800, 100, amplitude: 0.6),
       Cue.pip: beep(800, 100),
       Cue.start: beep(1200, 600),
+      Cue.tick: beep(2000, 40, amplitude: 0.7),
       Cue.end: sequence([
         for (var i = 0; i < 3; i++) beep(1200, 250),
       ], sampleAt(0.1)),

@@ -6,6 +6,7 @@ import '../../domain/marker_spacing.dart';
 import '../../domain/stage_protocol.dart';
 import '../common/decimal_text.dart';
 import '../history/history_page.dart';
+import '../metronome/metronome_page.dart';
 import '../lane_calculator/lane_calculator_page.dart';
 import '../multi_timer/multi_timer_setup_page.dart';
 import '../setup_assistant/spacing_assistant_page.dart';
@@ -68,6 +69,8 @@ class HomePage extends StatelessWidget {
         page = const LaneCalculatorPage();
       case HomeEntry.workouts:
         page = const WorkoutsPage();
+      case HomeEntry.metronome:
+        page = const MetronomePage();
       case HomeEntry.multiTimer:
         page = const MultiTimerSetupPage();
       case HomeEntry.setup:

@@ -38,6 +38,10 @@ enum HomeEntry {
     Color(0xFF4338CA),
     Color(0xFF0EA5E9),
   ]),
+  metronome('Métronome', 'Cadence de foulée', Icons.music_note, [
+    Color(0xFF0F766E),
+    Color(0xFF1E63E9),
+  ]),
   multiTimer('Chrono', 'Plusieurs coureurs, un tap par tour', Icons.timer_10, [
     Color(0xFF1E63E9),
     Color(0xFF0B2A6F),
@@ -51,7 +55,7 @@ enum HomeEntry {
   final List<Color> gradient;
 
   static const tests = [cooper, halfCooper, vameval, lucLeger];
-  static const training = [workouts, multiTimer, lanes];
+  static const training = [workouts, metronome, multiTimer, lanes];
   static const tools = [history, setup];
 
   /// Entrée de l'accueil d'un test par paliers (pour reprendre ses couleurs).

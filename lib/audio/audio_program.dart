@@ -19,6 +19,9 @@ enum Cue {
 
   /// Triple bip de fin.
   end,
+
+  /// Tic court et aigu du métronome.
+  tick,
 }
 
 /// Un événement de la bande-son, à [atS] secondes du début de la piste.
