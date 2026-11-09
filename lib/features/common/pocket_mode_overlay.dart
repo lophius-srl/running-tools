@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../common/hold_to_confirm.dart';
+import 'hold_to_confirm.dart';
 
 /// Écran noir pour courir téléphone en poche : seuls des appuis maintenus
 /// ont un effet, un tap accidentel ne fait rien.
 class PocketModeOverlay extends StatefulWidget {
-  const PocketModeOverlay({
-    super.key,
-    required this.onDropOut,
-    required this.onExit,
-  });
+  const PocketModeOverlay({super.key, this.onDropOut, required this.onExit});
 
   static const dropOutHold = Duration(seconds: 2);
   static const exitHold = Duration(seconds: 1);
 
-  final VoidCallback onDropOut;
+  /// Action « J'ai décroché » ; absente pour les tests chronométrés.
+  final VoidCallback? onDropOut;
   final VoidCallback onExit;
 
   @override
@@ -56,28 +53,31 @@ class _PocketModeOverlayState extends State<PocketModeOverlay> {
               style: TextStyle(color: dim),
             ),
             const Spacer(),
-            HoldToConfirm(
-              duration: PocketModeOverlay.dropOutHold,
-              onConfirmed: widget.onDropOut,
-              color: Colors.deepOrange,
-              size: 220,
-              child: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.flag, color: Colors.deepOrange, size: 48),
-                  SizedBox(height: 8),
-                  Text(
-                    "J'ai décroché",
-                    style: TextStyle(
-                      color: Colors.deepOrange,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+            if (widget.onDropOut case final onDropOut?)
+              HoldToConfirm(
+                duration: PocketModeOverlay.dropOutHold,
+                onConfirmed: onDropOut,
+                color: Colors.deepOrange,
+                size: 220,
+                child: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.flag, color: Colors.deepOrange, size: 48),
+                    SizedBox(height: 8),
+                    Text(
+                      "J'ai décroché",
+                      style: TextStyle(
+                        color: Colors.deepOrange,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  Text('maintenir 2 s', style: TextStyle(color: dim)),
-                ],
-              ),
-            ),
+                    Text('maintenir 2 s', style: TextStyle(color: dim)),
+                  ],
+                ),
+              )
+            else
+              const Icon(Icons.directions_run, color: dim, size: 64),
             const Spacer(flex: 2),
           ],
         ),

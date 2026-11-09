@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
-import 'package:running_tools/features/staged_run/pocket_mode_overlay.dart';
+import 'package:running_tools/features/common/pocket_mode_overlay.dart';
 import 'package:running_tools/features/staged_run/staged_run_page.dart';
 
 import '../../support/fakes.dart';

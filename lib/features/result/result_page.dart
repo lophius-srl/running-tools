@@ -2,30 +2,68 @@ import 'package:flutter/material.dart';
 
 import '../../audio/announcements.dart';
 import '../../domain/staged_outcome.dart';
+import '../../domain/test_results.dart';
+import '../../domain/timed_test.dart';
 import '../common/decimal_text.dart';
 import '../home/home_entry.dart';
 
-/// Résultat d'un test par paliers (version minimale ; allures et
-/// enregistrement viennent avec l'écran de résultat complet).
-class StagedResultPage extends StatefulWidget {
-  const StagedResultPage({super.key, required this.outcome});
+/// Résultat d'un test (version minimale ; allures et enregistrement viennent
+/// avec l'écran de résultat complet).
+class ResultPage extends StatefulWidget {
+  const ResultPage({
+    super.key,
+    required this.entry,
+    required this.resultFor,
+    required this.details,
+    this.offerProrata = false,
+    this.noResultMessage = '',
+  });
 
-  final StagedOutcome outcome;
+  /// Résultat d'un test par paliers, avec option prorata.
+  factory ResultPage.staged(StagedOutcome outcome) {
+    final percent = (outcome.fractionOfNextStage * 100).round();
+    return ResultPage(
+      entry: HomeEntry.ofStagedTest(outcome.test),
+      resultFor: (prorata) => outcome.result(prorata: prorata),
+      offerProrata: true,
+      details: [
+        if (outcome.hasResult)
+          'Palier ${outcome.completedStages} complet, '
+              'palier suivant couru à $percent %.',
+        '${outcome.distanceM.round()} m parcourus',
+      ],
+      noResultMessage:
+          'Le premier palier doit être terminé pour calculer un résultat.',
+    );
+  }
+
+  /// Résultat d'un test chronométré à partir de la distance saisie.
+  factory ResultPage.timed(TimedTest test, double distanceM) => ResultPage(
+    entry: HomeEntry.ofTimedTest(test),
+    resultFor: (_) => test.result(distanceM),
+    details: [
+      '${formatDecimal(distanceM)} m en ${test.duration.inMinutes} min',
+    ],
+  );
+
+  final HomeEntry entry;
+  final TestResult? Function(bool prorata) resultFor;
+  final List<String> details;
+  final bool offerProrata;
+  final String noResultMessage;
 
   @override
-  State<StagedResultPage> createState() => _StagedResultPageState();
+  State<ResultPage> createState() => _ResultPageState();
 }
 
-class _StagedResultPageState extends State<StagedResultPage> {
+class _ResultPageState extends State<ResultPage> {
   var _prorata = false;
 
   @override
   Widget build(BuildContext context) {
-    final outcome = widget.outcome;
     final theme = Theme.of(context);
-    final entry = HomeEntry.ofStagedTest(outcome.test);
-    final result = outcome.result(prorata: _prorata);
-    final percent = (outcome.fractionOfNextStage * 100).round();
+    final result = widget.resultFor(_prorata);
+    final white = theme.textTheme.titleLarge?.copyWith(color: Colors.white);
 
     return Scaffold(
       body: ListView(
@@ -36,7 +74,7 @@ class _StagedResultPageState extends State<StagedResultPage> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: entry.gradient,
+                colors: widget.entry.gradient,
               ),
               borderRadius: const BorderRadius.vertical(
                 bottom: Radius.circular(32),
@@ -50,7 +88,7 @@ class _StagedResultPageState extends State<StagedResultPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      outcome.test.label,
+                      widget.entry.label,
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: Colors.white.withValues(alpha: 0.85),
                       ),
@@ -73,10 +111,9 @@ class _StagedResultPageState extends State<StagedResultPage> {
                         ),
                       ),
                       Text(
-                        'VO2max ${formatDecimal(_round1(result.vo2max))} ml/kg/min',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                        ),
+                        'VO2max ${formatDecimal(_round1(result.vo2max))} '
+                        'ml/kg/min',
+                        style: white,
                       ),
                     ],
                   ],
@@ -89,19 +126,14 @@ class _StagedResultPageState extends State<StagedResultPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  result == null
-                      ? 'Le premier palier doit être terminé pour calculer '
-                            'un résultat.'
-                      : 'Palier ${outcome.completedStages} complet, '
-                            'palier suivant couru à $percent %.',
-                  style: theme.textTheme.bodyLarge,
-                ),
-                Text(
-                  '${outcome.distanceM.round()} m parcourus',
-                  style: theme.textTheme.bodyLarge,
-                ),
-                if (result != null)
+                if (result == null)
+                  Text(
+                    widget.noResultMessage,
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                for (final line in widget.details)
+                  Text(line, style: theme.textTheme.bodyLarge),
+                if (result != null && widget.offerProrata)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Prorata du palier entamé'),

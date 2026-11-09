@@ -5,6 +5,7 @@ import 'package:running_tools/audio/track_builder.dart';
 import 'package:running_tools/audio/track_service.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
+import 'package:running_tools/domain/timed_test.dart';
 
 void main() {
   late Directory dir;
@@ -67,5 +68,34 @@ void main() {
     voiceError = null;
     await service.prepare(vameval);
     expect(builds, 2);
+  });
+
+  test('piste chronométrée en cache, et une seule piste gardée', () async {
+    var timedBuilds = 0;
+    Future<String?> fakeTimed(
+      TimedTest test, {
+      required Directory workDir,
+      required String outputPath,
+      int sampleRate = 22050,
+      int leadIn = 10,
+      void Function(String step)? onProgress,
+    }) async {
+      timedBuilds++;
+      File(outputPath).writeAsStringSync('wav');
+      return null;
+    }
+
+    final service = CachedTrackService(
+      dir,
+      build: fakeBuild,
+      buildTimed: fakeTimed,
+    );
+    await service.prepare(vameval);
+    final first = await service.prepareTimed(TimedTest.cooper);
+    final again = await service.prepareTimed(TimedTest.cooper);
+    expect(timedBuilds, 1);
+    expect(again.path, first.path);
+    expect(again.leadIn, 10);
+    expect(trackFiles(), hasLength(1));
   });
 }

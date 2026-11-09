@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../app_theme.dart';
 import '../common/coming_soon_page.dart';
 import '../staged_setup/staged_setup_page.dart';
+import '../timed_run/timed_run_page.dart';
 import 'home_entry.dart';
 
 class HomePage extends StatelessWidget {
@@ -11,11 +12,14 @@ class HomePage extends StatelessWidget {
 
   void _open(BuildContext context, HomeEntry entry) {
     final stagedTest = entry.stagedTest;
+    final timedTest = entry.timedTest;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => stagedTest != null
-            ? StagedSetupPage(test: stagedTest)
-            : ComingSoonPage(title: entry.label),
+        builder: (_) => switch ((stagedTest, timedTest)) {
+          (final staged?, _) => StagedSetupPage(test: staged),
+          (_, final timed?) => TimedRunPage(test: timed),
+          _ => ComingSoonPage(title: entry.label),
+        },
       ),
     );
   }

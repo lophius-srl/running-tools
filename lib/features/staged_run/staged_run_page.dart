@@ -12,9 +12,10 @@ import '../../device/screen_wake_lock.dart';
 import '../../domain/stage_protocol.dart';
 import '../../domain/staged_outcome.dart';
 import '../../domain/staged_test_setup.dart';
+import '../common/run_widgets.dart';
 import '../home/home_entry.dart';
-import '../staged_result/staged_result_page.dart';
-import 'pocket_mode_overlay.dart';
+import '../result/result_page.dart';
+import '../common/pocket_mode_overlay.dart';
 
 /// Écran de course d'un test par paliers : prépare puis joue la piste.
 class StagedRunPage extends ConsumerStatefulWidget {
@@ -89,9 +90,7 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
     );
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => StagedResultPage(outcome: outcome),
-      ),
+      MaterialPageRoute<void>(builder: (_) => ResultPage.staged(outcome)),
     );
   }
 
@@ -112,12 +111,15 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
     final page = Scaffold(
       body: Column(
         children: [
-          _Header(setup: widget.setup),
+          RunHeader(
+            entry: HomeEntry.ofStagedTest(widget.setup.test),
+            trailing: '${formatKmh(widget.setup.protocol.markerSpacingM)} m',
+          ),
           Expanded(
             child: _error != null
-                ? _Message(icon: Icons.error_outline, text: _error!)
+                ? RunMessage(icon: Icons.error_outline, text: _error!)
                 : track == null
-                ? _Preparing(status: _status)
+                ? RunPreparing(status: _status)
                 : _Running(
                     test: widget.setup.test,
                     track: track,
@@ -145,7 +147,7 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
               ),
             ),
           if (track != null)
-            _Controls(
+            RunControls(
               playing: _playing,
               duckOthers: _duckOthers,
               onPlayPause: _playing ? _player.pause : _player.play,
@@ -169,88 +171,6 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
       ],
     );
   }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.setup});
-
-  final StagedTestSetup setup;
-
-  @override
-  Widget build(BuildContext context) {
-    final entry = HomeEntry.ofStagedTest(setup.test);
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: entry.gradient),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 4, 16, 16),
-          child: Row(
-            children: [
-              const BackButton(color: Colors.white),
-              Icon(entry.icon, color: Colors.white),
-              const SizedBox(width: 10),
-              Text(
-                setup.test.label,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${formatKmh(setup.protocol.markerSpacingM)} m',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Preparing extends StatelessWidget {
-  const _Preparing({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const CircularProgressIndicator(),
-        const SizedBox(height: 16),
-        Text(status, textAlign: TextAlign.center),
-      ],
-    ),
-  );
-}
-
-class _Message extends StatelessWidget {
-  const _Message({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 48, color: Theme.of(context).colorScheme.error),
-          const SizedBox(height: 12),
-          Text(text, textAlign: TextAlign.center),
-        ],
-      ),
-    ),
-  );
 }
 
 class _Running extends StatelessWidget {
@@ -411,79 +331,4 @@ class _Tile extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Controls extends StatelessWidget {
-  const _Controls({
-    required this.playing,
-    required this.duckOthers,
-    required this.onPlayPause,
-    required this.onStop,
-    required this.onDuckChanged,
-    required this.onPocketMode,
-  });
-
-  final bool playing;
-  final bool duckOthers;
-  final VoidCallback onPlayPause;
-  final VoidCallback onStop;
-  final ValueChanged<bool>? onDuckChanged;
-  final VoidCallback onPocketMode;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SwitchListTile(
-              title: const Text('Baisser la musique'),
-              value: duckOthers,
-              onChanged: onDuckChanged,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton.outlined(
-                  tooltip: 'Recommencer',
-                  iconSize: 32,
-                  onPressed: onStop,
-                  icon: const Icon(Icons.stop),
-                ),
-                const SizedBox(width: 24),
-                SizedBox.square(
-                  dimension: 88,
-                  child: IconButton.filled(
-                    tooltip: playing ? 'Pause' : 'Lecture',
-                    iconSize: 48,
-                    onPressed: onPlayPause,
-                    icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                  ),
-                ),
-                const SizedBox(width: 24),
-                IconButton.outlined(
-                  tooltip: 'Mode poche',
-                  iconSize: 32,
-                  onPressed: onPocketMode,
-                  icon: const Icon(Icons.phonelink_lock),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// « 03:07 » pour 187 s.
-String formatClock(double seconds) {
-  final total = seconds.floor();
-  final m = (total ~/ 60).toString().padLeft(2, '0');
-  final s = (total % 60).toString().padLeft(2, '0');
-  return '$m:$s';
 }
