@@ -61,8 +61,12 @@ void main() {
     history.records.addAll([vameval, cooper]);
     await pumpPage(tester);
 
-    final cooperTop = tester.getTopLeft(find.text('Cooper')).dy;
-    final vamevalTop = tester.getTopLeft(find.text('VAMEVAL')).dy;
+    final cooperTop = tester
+        .getTopLeft(find.byKey(const ValueKey('record-c')))
+        .dy;
+    final vamevalTop = tester
+        .getTopLeft(find.byKey(const ValueKey('record-v')))
+        .dy;
     expect(cooperTop, lessThan(vamevalTop));
     expect(find.text('9 nov. 2026, 08:00'), findsOneWidget);
     expect(find.text('14,8 km/h'), findsOneWidget);
@@ -72,7 +76,11 @@ void main() {
   testWidgets('détail : setup complet et allures recalculées', (tester) async {
     history.records.add(vameval);
     await pumpPage(tester);
-    await tester.tap(find.text('VAMEVAL'));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('record-v')),
+      100,
+    );
+    await tester.tap(find.byKey(const ValueKey('record-v')));
     await tester.pumpAndSettle();
 
     expect(
@@ -92,7 +100,11 @@ void main() {
   ) async {
     history.records.addAll([vameval, cooper]);
     await pumpPage(tester);
-    await tester.tap(find.text('Cooper'));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('record-c')),
+      100,
+    );
+    await tester.tap(find.byKey(const ValueKey('record-c')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Supprimer'));
@@ -107,7 +119,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(history.records.map((r) => r.id), ['v']);
-    expect(find.text('Cooper'), findsNothing);
-    expect(find.text('VAMEVAL'), findsOneWidget);
+    expect(find.byKey(const ValueKey('record-c')), findsNothing);
+    expect(find.byKey(const ValueKey('record-v')), findsOneWidget);
   });
 }

@@ -8,6 +8,7 @@ import '../common/decimal_text.dart';
 import '../home/home_entry.dart';
 import 'history_controller.dart';
 import 'history_detail_page.dart';
+import 'progress_card.dart';
 
 /// Liste des tests enregistrés, du plus récent au plus ancien.
 class HistoryPage extends ConsumerWidget {
@@ -26,11 +27,20 @@ class HistoryPage extends ConsumerWidget {
             ],
             AsyncData(value: final records) => [
               SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                sliver: SliverToBoxAdapter(
+                  child: ProgressCard(records: records),
+                ),
+              ),
+              SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                 sliver: SliverList.separated(
                   itemCount: records.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, i) => _RecordCard(record: records[i]),
+                  itemBuilder: (context, i) => _RecordCard(
+                    key: ValueKey('record-${records[i].id}'),
+                    record: records[i],
+                  ),
                 ),
               ),
             ],
@@ -123,7 +133,7 @@ class _Empty extends StatelessWidget {
 }
 
 class _RecordCard extends StatelessWidget {
-  const _RecordCard({required this.record});
+  const _RecordCard({super.key, required this.record});
 
   final TestRecord record;
 
