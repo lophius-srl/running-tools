@@ -11,7 +11,10 @@ void main() {
   late SpacingChoice? result;
   late FakePreferencesRepository prefs;
 
-  Future<void> pumpAssistant(WidgetTester tester) async {
+  Future<void> pumpAssistant(
+    WidgetTester tester, {
+    FakeDistanceMeasurer? measurer,
+  }) async {
     tester.view
       ..physicalSize = const Size(1179, 2556)
       ..devicePixelRatio = 3;
@@ -20,7 +23,7 @@ void main() {
     prefs = FakePreferencesRepository();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: fakeOverrides(preferences: prefs),
+        overrides: fakeOverrides(preferences: prefs, measurer: measurer),
         child: MaterialApp(
           home: Builder(
             builder: (context) => TextButton(
@@ -69,12 +72,24 @@ void main() {
     expect(result!.method, MeasurementMethod.tape);
   });
 
-  testWidgets('AR pas encore disponible', (tester) async {
+  testWidgets('AR : la mesure remplit l\'espacement', (tester) async {
+    final measurer = FakeDistanceMeasurer(
+      const SpacingChoice(19.86, MeasurementMethod.ar),
+    );
+    await pumpAssistant(tester, measurer: measurer);
+    await tester.tap(find.text('Réalité augmentée'));
+    await tester.pumpAndSettle();
+    expect(measurer.requestedSpacing, 20);
+    expect(result!.spacingM, 19.86);
+    expect(result!.method, MeasurementMethod.ar);
+  });
+
+  testWidgets('AR abandonnée : on reste dans l\'assistant', (tester) async {
     await pumpAssistant(tester);
-    expect(find.text('Bientôt disponible'), findsOneWidget);
     await tester.tap(find.text('Réalité augmentée'));
     await tester.pumpAndSettle();
     expect(find.byType(SpacingAssistantPage), findsOneWidget);
+    expect(result, isNull);
   });
 
   Finder field(String label) => find.widgetWithText(TextField, label);
