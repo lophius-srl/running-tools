@@ -32,6 +32,7 @@ const recoveryCountdownAnnouncement = 'Encore 30 secondes.';
 AudioProgram workoutProgram(
   WorkoutPlan plan, {
   WorkoutAudioMode mode = WorkoutAudioMode.chrono,
+  String Function(EffortStep step) announce = effortAnnouncement,
   int leadIn = 10,
   int tail = 4,
 }) {
@@ -43,7 +44,7 @@ AudioProgram workoutProgram(
       case EffortStep():
         final start = at(step.start);
         // Annonce 6 s avant le départ (pendant l'intro ou la récup).
-        events.add(ProgramEvent.speech(start - 6, effortAnnouncement(step)));
+        events.add(ProgramEvent.speech(start - 6, announce(step)));
         for (var s = 3; s >= 1; s--) {
           events.add(ProgramEvent.cue(start - s, Cue.pip));
         }
