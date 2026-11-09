@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/marker_spacing.dart';
 import '../../domain/measurement_method.dart';
 import '../common/decimal_text.dart';
+import 'shoe_section.dart';
 
 /// Assistant de mise en place : choisir comment obtenir l'espacement des
 /// repères. Renvoie un [SpacingChoice] via `Navigator.pop`.
@@ -13,7 +14,7 @@ class SpacingAssistantPage extends StatefulWidget {
   State<SpacingAssistantPage> createState() => _SpacingAssistantPageState();
 }
 
-enum _Method { manual, field }
+enum _Method { manual, field, shoe }
 
 class _SpacingAssistantPageState extends State<SpacingAssistantPage> {
   _Method? _open;
@@ -101,10 +102,13 @@ class _SpacingAssistantPageState extends State<SpacingAssistantPage> {
               ],
             ),
           ),
-          const _MethodCard(
+          _MethodCard(
             icon: Icons.do_not_step,
             title: 'Chaussure (talon-pointe)',
-            subtitle: 'Bientôt disponible',
+            subtitle: 'Compter ses pas, un pied devant l’autre',
+            expanded: _open == _Method.shoe,
+            onTap: () => setState(() => _open = _Method.shoe),
+            child: ShoeSection(onChosen: _choose),
           ),
           const _MethodCard(
             icon: Icons.view_in_ar,

@@ -15,4 +15,14 @@ void main() {
     await prefs.setDuckOthers(false);
     expect(await JsonPreferencesRepository(dir).duckOthers(), isFalse);
   });
+
+  test('longueur de chaussure mémorisée sans écraser le reste', () async {
+    final prefs = JsonPreferencesRepository(dir);
+    expect(await prefs.shoeLengthM(), isNull);
+    await prefs.setDuckOthers(false);
+    await prefs.setShoeLengthM(0.295);
+    final reread = JsonPreferencesRepository(dir);
+    expect(await reread.shoeLengthM(), 0.295);
+    expect(await reread.duckOthers(), isFalse);
+  });
 }
