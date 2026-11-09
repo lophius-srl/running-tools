@@ -1,12 +1,14 @@
 # CLAUDE.md — Règles du projet
 
 > Ce fichier est lu automatiquement par Claude Code (en local et dans GitHub Actions).
-> Complète les sections marquées `TODO` au démarrage de chaque nouveau projet.
 
 ## Le projet
-- **Nom** : TODO
-- **But** : TODO (1–2 phrases : quel problème, pour qui)
-- **Stack** : TODO (langage, framework, base de données, hébergement)
+- **Nom** : Running Tools
+- **But** : app iOS perso pour faire seul des tests de VMA/VO2max (Cooper, demi-Cooper,
+  VAMEVAL, navette Luc Léger) : bips fiables, mesure des repères, résultats et historique.
+- **Stack** : Flutter / Dart, iOS uniquement (signature gratuite « Personal Team » :
+  aucune fonctionnalité réservée au compte payant). État : Riverpod. Stockage : JSON local.
+  Audio : just_audio + audio_session + flutter_tts. AR : arkit_plugin. Pas de serveur.
 - **Décisions d'architecture** : voir `docs/adr/`
 
 ## Commandes (toujours passer par le Makefile)
@@ -51,7 +53,20 @@ Pour rester un usage « humain » :
 - Noms explicites, fonctions courtes, pas de code mort ni de `console.log`/`print` de debug.
 - Pas de secrets dans le code : variables d'environnement + `.env.example` tenu à jour.
 - Toute décision technique structurante → un ADR dans `docs/adr/`.
-- TODO : ajouter les conventions propres à la stack (style, structure des dossiers…).
+- Style : `dart format` + `flutter_lints` (vérifiés par `make lint`).
+- Langue : textes d'interface et commentaires en français, identifiants en anglais.
+- Structure de `lib/` :
+  | Dossier | Contenu | Règle |
+  |---|---|---|
+  | `domain/` | Protocoles, planning des bips, calculs VMA/VO2max/allures, distance | Dart pur : aucun import `package:flutter` ni plugin |
+  | `audio/` | Rendu de la piste (pur) + `BeepPlayer`, synthèse vocale (natif) | Le natif reste derrière `BeepPlayer` |
+  | `measure/` | `DistanceMeasurer` : ARKit et saisie manuelle | Le natif reste derrière l'interface |
+  | `data/` | `TestHistoryRepository` et son implémentation JSON | |
+  | `features/<écran>/` | Widgets et providers d'un écran | Pas de calcul métier ici |
+- `test/` reproduit l'arborescence de `lib/`. Le domaine et le rendu audio sont testés
+  unitairement ; les écrans avec de fausses versions des services (overrides Riverpod).
+- Les services natifs (lecteur, ARKit, synthèse vocale) ne sont pas testés en CI :
+  ils se valident sur iPhone (`flutter run --release`).
 
 ## Équipe d'agents (`.claude/agents/`)
 | Agent | Rôle | Quand l'appeler |
