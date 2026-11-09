@@ -10,7 +10,7 @@ void main() {
     vmaKmh: 15,
     markerSpacingM: 20,
   );
-  final program = workoutChronoProgram(plan);
+  final program = workoutProgram(plan);
 
   List<double> timesOf(Cue cue) => [
     for (final e in program.events)
@@ -55,5 +55,49 @@ void main() {
     expect(describeSet(plan.workout.sets.single), '8 × 400 m à 100 %');
     final cotes = workoutLibrary.firstWhere((w) => w.id == 'lib-cotes');
     expect(describeSet(cotes.sets.single), '8 × 45 s');
+  });
+
+  group('lièvre sonore', () {
+    final pacer = workoutProgram(plan, mode: WorkoutAudioMode.pacer);
+    final markers = [
+      for (final e in pacer.events)
+        if (e.cue == Cue.marker) e.atS,
+    ];
+
+    test('un bip par repère, sauf celui qui tombe sur la fin', () {
+      // 20 repères par 400 m, le 20e confondu avec le signal de fin.
+      expect(markers, hasLength(8 * 19));
+      expect(markers.first, closeTo(10 + 4.8, 1e-9));
+      expect(markers[18], closeTo(10 + 19 * 4.8, 1e-9));
+      // 2e répétition : départ à 10 + 96 + 90 s.
+      expect(markers[19], closeTo(10 + 96 + 90 + 4.8, 1e-9));
+    });
+
+    test('pas de bip de repère en mode chrono', () {
+      expect(program.events.where((e) => e.cue == Cue.marker), isEmpty);
+    });
+
+    test('couloir 3 : bips espacés selon la distance réelle', () {
+      final lane3 = WorkoutPlan.compute(
+        plan.workout,
+        vmaKmh: 15,
+        markerSpacingM: 20,
+        lane: 3,
+      );
+      final first = workoutProgram(
+        lane3,
+        mode: WorkoutAudioMode.pacer,
+      ).events.firstWhere((e) => e.cue == Cue.marker);
+      expect(first.atS, closeTo(10 + 20 * 414.70 / 400 / (15 / 3.6), 0.01));
+    });
+  });
+
+  test('récupération longue : « Encore 30 secondes » 30 s avant la fin', () {
+    final countdowns = [
+      for (final e in program.events)
+        if (e.speech == recoveryCountdownAnnouncement) e.atS,
+    ];
+    expect(countdowns, hasLength(7));
+    expect(countdowns.first, 10 + 96 + 90 - 30);
   });
 }

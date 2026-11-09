@@ -26,6 +26,8 @@ void main() {
     expect(byName('8 × 400 m').isDistanceBased, isTrue);
     expect(byName('Pyramide 200-400-600-400-200').effortCount, 5);
     expect(byName('30/30').isDistanceBased, isFalse);
+    expect(byName('30/30').hasDistanceEfforts, isFalse);
+    expect(byName('Pyramide 200-400-600-400-200').hasDistanceEfforts, isTrue);
   });
 
   test('aller-retour JSON, y compris récup en distance et sans % VMA', () {

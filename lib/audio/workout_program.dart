@@ -20,10 +20,18 @@ String recoveryAnnouncement(RecoveryStep step) =>
 
 const sessionEndAnnouncement = 'Fin de la séance. Bravo !';
 
-/// Bande-son « chrono simple » : décompte et signal au début de chaque
-/// répétition, signal à la fin, annonces de répétition et de récupération.
-AudioProgram workoutChronoProgram(
+/// Lièvre : un bip à chaque repère pendant les répétitions en distance.
+/// Chrono : seulement les signaux de début et de fin.
+enum WorkoutAudioMode { chrono, pacer }
+
+const recoveryCountdownAnnouncement = 'Encore 30 secondes.';
+
+/// Bande-son d'une séance : décompte et signal au début de chaque
+/// répétition, signal à la fin, annonces de répétition et de récupération ;
+/// en mode [WorkoutAudioMode.pacer], un bip à chaque repère.
+AudioProgram workoutProgram(
   WorkoutPlan plan, {
+  WorkoutAudioMode mode = WorkoutAudioMode.chrono,
   int leadIn = 10,
   int tail = 4,
 }) {
@@ -40,6 +48,15 @@ AudioProgram workoutChronoProgram(
           events.add(ProgramEvent.cue(start - s, Cue.pip));
         }
         events.add(ProgramEvent.cue(start, Cue.start));
+        if (mode == WorkoutAudioMode.pacer) {
+          for (final split in step.markerSplits) {
+            // Le dernier repère tombe sur le signal de fin : pas de doublon.
+            if (step.duration - split < const Duration(milliseconds: 300)) {
+              continue;
+            }
+            events.add(ProgramEvent.cue(at(step.start + split), Cue.marker));
+          }
+        }
         final isLast = identical(step, efforts.last);
         events.add(
           ProgramEvent.cue(at(step.end), isLast ? Cue.end : Cue.change),
@@ -56,6 +73,14 @@ AudioProgram workoutChronoProgram(
             ProgramEvent.speech(
               at(step.start) + 0.45,
               recoveryAnnouncement(step),
+            ),
+          );
+        }
+        if (step.duration >= const Duration(seconds: 50)) {
+          events.add(
+            ProgramEvent.speech(
+              at(step.end) - 30,
+              recoveryCountdownAnnouncement,
             ),
           );
         }
