@@ -18,9 +18,14 @@ import '../home/home_entry.dart';
 
 /// Séance en mode chrono : signaux et annonces, étape en cours à l'écran.
 class WorkoutRunPage extends ConsumerStatefulWidget {
-  const WorkoutRunPage({super.key, required this.plan});
+  const WorkoutRunPage({
+    super.key,
+    required this.plan,
+    this.mode = WorkoutAudioMode.chrono,
+  });
 
   final WorkoutPlan plan;
+  final WorkoutAudioMode mode;
 
   @override
   ConsumerState<WorkoutRunPage> createState() => _WorkoutRunPageState();
@@ -55,7 +60,7 @@ class _WorkoutRunPageState extends ConsumerState<WorkoutRunPage> {
       _duckOthers = await preferences.duckOthers();
       final service = await ref.read(trackServiceProvider.future);
       final track = await service.prepare(
-        workoutChronoProgram(widget.plan),
+        workoutProgram(widget.plan, mode: widget.mode),
         onProgress: (step) {
           if (mounted) setState(() => _status = step);
         },
@@ -109,7 +114,11 @@ class _WorkoutRunPageState extends ConsumerState<WorkoutRunPage> {
                 ? RunPreparing(status: _status)
                 : finished
                 ? _Recap(plan: widget.plan)
-                : _Current(plan: widget.plan, elapsedS: elapsedS),
+                : _Current(
+                    plan: widget.plan,
+                    elapsedS: elapsedS,
+                    showMarkers: widget.mode == WorkoutAudioMode.pacer,
+                  ),
           ),
           if (track != null && !finished)
             RunControls(
@@ -139,10 +148,17 @@ class _WorkoutRunPageState extends ConsumerState<WorkoutRunPage> {
 
 /// Étape en cours, temps restant et étape suivante.
 class _Current extends StatelessWidget {
-  const _Current({required this.plan, required this.elapsedS});
+  const _Current({
+    required this.plan,
+    required this.elapsedS,
+    required this.showMarkers,
+  });
 
   final WorkoutPlan plan;
   final double elapsedS;
+
+  /// Lièvre : compteur des repères de la répétition en cours.
+  final bool showMarkers;
 
   @override
   Widget build(BuildContext context) {
@@ -206,6 +222,20 @@ class _Current extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
+              if (showMarkers &&
+                  step is EffortStep &&
+                  step.markerSplits.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Repère ${_markersPassed(step, elapsed)}/'
+                    '${step.markerSplits.length}',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               if (step != null && step.duration > Duration.zero) ...[
                 const SizedBox(height: 16),
                 ClipRRect(
@@ -322,6 +352,10 @@ class _Recap extends StatelessWidget {
     );
   }
 }
+
+/// Repères déjà franchis dans la répétition [step] à [elapsed].
+int _markersPassed(EffortStep step, Duration elapsed) =>
+    step.markerSplits.where((split) => step.start + split <= elapsed).length;
 
 /// « 400 m · 1:36,0 (4:00 /km) » ou « 30 s · ≈ 125 m ».
 String _label(EffortStep e) {

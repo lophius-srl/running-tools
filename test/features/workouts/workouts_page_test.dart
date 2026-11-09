@@ -64,7 +64,7 @@ void main() {
     expect(find.text('16'), findsOneWidget);
     // 400 m à 16 km/h : 1:30,0, soit 3:45 /km.
     expect(find.text('1:30,0 · 3:45 /km'), findsWidgets);
-    expect(find.text('Lièvre sonore : bientôt'), findsOneWidget);
+    expect(find.text('Lièvre sonore (bip à chaque repère)'), findsOneWidget);
 
     await tester.tap(find.bySemanticsLabel('Couloir 4'));
     await tester.pump();
@@ -119,6 +119,7 @@ void main() {
   ) async {
     await pumpPage(tester);
     await openWorkout(tester, '45/15');
+    expect(find.textContaining('Lièvre sonore'), findsNothing);
     expect(find.byTooltip('Modifier'), findsNothing);
     expect(find.byTooltip('Supprimer'), findsNothing);
   });

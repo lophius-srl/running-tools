@@ -99,8 +99,11 @@ class Workout {
 
   int get effortCount => sets.fold(0, (sum, s) => sum + s.reps);
 
-  /// Toutes les répétitions sont en distance : le lièvre sonore s'applique.
+  /// Toutes les répétitions sont en distance.
   bool get isDistanceBased => sets.every((s) => s.effort.isDistance);
+
+  /// Au moins une répétition en distance : le lièvre sonore s'applique.
+  bool get hasDistanceEfforts => sets.any((s) => s.effort.isDistance);
 
   Workout copyWith({String? id, String? name, List<WorkoutSet>? sets}) =>
       Workout(

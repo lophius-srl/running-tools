@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/announcements.dart';
+import '../../audio/workout_program.dart';
 import '../../data/providers.dart';
 import '../../domain/training_paces.dart';
 import '../../domain/workout.dart';
@@ -136,10 +137,26 @@ class _WorkoutDetailPageState extends ConsumerState<WorkoutDetailPage> {
                         minimumSize: const Size.fromHeight(56),
                       ),
                     ),
-                    if (workout.isDistanceBased)
-                      const TextButton(
-                        onPressed: null,
-                        child: Text('Lièvre sonore : bientôt'),
+                    if (workout.hasDistanceEfforts)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: FilledButton.tonalIcon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => WorkoutRunPage(
+                                plan: plan,
+                                mode: WorkoutAudioMode.pacer,
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.graphic_eq),
+                          label: const Text(
+                            'Lièvre sonore (bip à chaque repère)',
+                          ),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
+                          ),
+                        ),
                       ),
                   ],
                 ),

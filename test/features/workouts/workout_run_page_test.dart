@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:running_tools/audio/audio_program.dart';
+import 'package:running_tools/audio/workout_program.dart';
 import 'package:running_tools/domain/workout.dart';
 import 'package:running_tools/domain/workout_plan.dart';
 import 'package:running_tools/features/workouts/workout_run_page.dart';
@@ -34,7 +35,10 @@ void main() {
     tracks = FakeTrackService();
   });
 
-  Future<void> pumpPage(WidgetTester tester) async {
+  Future<void> pumpPage(
+    WidgetTester tester, {
+    WorkoutAudioMode mode = WorkoutAudioMode.chrono,
+  }) async {
     tester.view
       ..physicalSize = const Size(1179, 2556)
       ..devicePixelRatio = 3;
@@ -42,7 +46,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: fakeOverrides(player: player, tracks: tracks),
-        child: MaterialApp(home: WorkoutRunPage(plan: plan)),
+        child: MaterialApp(
+          home: WorkoutRunPage(plan: plan, mode: mode),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -80,5 +86,24 @@ void main() {
     await at(tester, Duration(seconds: 10 + plan.totalDuration.inSeconds + 1));
     expect(find.text('Séance terminée !'), findsOneWidget);
     expect(find.byType(ListTile), findsNWidgets(2));
+  });
+
+  testWidgets('lièvre : bips de repère chargés et compteur affiché', (
+    tester,
+  ) async {
+    await pumpPage(tester, mode: WorkoutAudioMode.pacer);
+    expect(
+      tracks.programs.single.events.where((e) => e.cue == Cue.marker),
+      hasLength(2 * 19),
+    );
+    // 30 s dans la 1re répétition : 6 repères de 4,8 s franchis.
+    await at(tester, const Duration(seconds: 10 + 30));
+    expect(find.text('Repère 6/20'), findsOneWidget);
+  });
+
+  testWidgets('chrono : pas de compteur de repères', (tester) async {
+    await pumpPage(tester);
+    await at(tester, const Duration(seconds: 10 + 30));
+    expect(find.textContaining('Repère'), findsNothing);
   });
 }
