@@ -6,6 +6,11 @@ import 'package:running_tools/features/home/home_entry.dart';
 
 void main() {
   Future<void> pumpApp(WidgetTester tester) async {
+    // Taille d'un iPhone 15 Pro.
+    tester.view
+      ..physicalSize = const Size(1179, 2556)
+      ..devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(const ProviderScope(child: RunningToolsApp()));
   }
 
@@ -19,6 +24,7 @@ void main() {
 
   testWidgets('un appui ouvre l\'écran correspondant', (tester) async {
     await pumpApp(tester);
+    await tester.scrollUntilVisible(find.text('VAMEVAL'), 100);
     await tester.tap(find.text('VAMEVAL'));
     await tester.pumpAndSettle();
 
