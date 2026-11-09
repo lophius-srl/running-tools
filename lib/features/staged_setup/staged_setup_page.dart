@@ -5,9 +5,9 @@ import '../../data/providers.dart';
 import '../../domain/measurement_method.dart';
 import '../../domain/stage_protocol.dart';
 import '../../domain/staged_test_setup.dart';
-import '../common/coming_soon_page.dart';
 import '../common/decimal_text.dart';
 import '../home/home_entry.dart';
+import '../staged_run/staged_run_page.dart';
 
 /// Réglages d'un test par paliers avant le départ.
 class StagedSetupPage extends ConsumerStatefulWidget {
@@ -92,9 +92,7 @@ class _StagedSetupPageState extends ConsumerState<StagedSetupPage> {
     await repository.save(setup);
     if (!mounted) return;
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ComingSoonPage(title: widget.test.label),
-      ),
+      MaterialPageRoute<void>(builder: (_) => StagedRunPage(setup: setup)),
     );
   }
 

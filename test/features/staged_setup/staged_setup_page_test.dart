@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
 import 'package:running_tools/features/staged_setup/staged_setup_page.dart';
@@ -18,9 +17,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          setupRepositoryProvider.overrideWith((ref) async => repository),
-        ],
+        overrides: fakeOverrides(setups: repository),
         child: const MaterialApp(
           home: StagedSetupPage(test: StagedTest.vameval),
         ),

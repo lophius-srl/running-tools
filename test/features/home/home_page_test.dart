@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:running_tools/app.dart';
-import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/features/home/home_entry.dart';
 
 import '../../support/fakes.dart';
@@ -15,14 +14,7 @@ void main() {
       ..devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          setupRepositoryProvider.overrideWith(
-            (ref) async => FakeSetupRepository(),
-          ),
-        ],
-        child: const RunningToolsApp(),
-      ),
+      ProviderScope(overrides: fakeOverrides(), child: const RunningToolsApp()),
     );
   }
 
