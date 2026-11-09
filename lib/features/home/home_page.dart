@@ -5,6 +5,7 @@ import '../../app_theme.dart';
 import '../../domain/marker_spacing.dart';
 import '../../domain/stage_protocol.dart';
 import '../common/decimal_text.dart';
+import '../checklists/checklists_page.dart';
 import '../club/club_setup_page.dart';
 import '../history/history_page.dart';
 import '../metronome/metronome_page.dart';
@@ -66,6 +67,8 @@ class HomePage extends StatelessWidget {
         page = StagedSetupPage(test: entry.stagedTest!);
       case HomeEntry.history:
         page = const HistoryPage();
+      case HomeEntry.checklists:
+        page = const ChecklistsPage();
       case HomeEntry.lanes:
         page = const LaneCalculatorPage();
       case HomeEntry.workouts:
