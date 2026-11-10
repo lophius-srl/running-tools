@@ -230,7 +230,19 @@ class CleanActivity {
   /// Vitesse moyenne en mouvement (km/h).
   double get averageKmh => movingS == 0 ? 0 : distanceM / movingS * 3.6;
 
-  /// Profil d'altitude lissé (pas de 10 m), `null` sans altitudes.
+  /// Dénivelé positif et négatif (m) sur les altitudes enregistrées, sans
+  /// lissage en distance : seul un écart de [thresholdM] écarte le bruit.
+  /// `null` sans altitudes.
+  ({double gain, double loss})? elevationChange({double thresholdM = 2}) =>
+      hasElevation
+      ? elevationGainLoss([
+          for (final p in points) ?p.elevationM,
+        ], thresholdM: thresholdM)
+      : null;
+
+  /// Profil d'altitude lissé (pas de 10 m) pour corriger l'allure de la
+  /// pente ; pas pour le dénivelé, que le lissage sous-estime.
+  /// `null` sans altitudes.
   CourseProfile? get profile {
     if (!hasElevation || distanceM < 2 * CourseProfile.stepM) return null;
     final withEle = points.where((p) => p.elevationM != null).toList();

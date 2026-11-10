@@ -43,7 +43,7 @@ class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
     final pace = a.averageKmh <= 0
         ? '–'
         : '${formatPace(paceForSpeed(a.averageKmh))}/km';
-    final gain = a.profile?.climb().gain.round();
+    final climb = a.elevationChange();
     final pacing = PacingAnalysis.of(_track, _type);
     final vma = widget.vmaKmh == null
         ? null
@@ -90,7 +90,11 @@ class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
                   formatRaceTime(a.elapsed.inSeconds.toDouble()),
                 ),
                 row('Allure moyenne', pace),
-                if (gain != null) row('Dénivelé positif', '$gain m'),
+                if (climb != null)
+                  row(
+                    'Dénivelé',
+                    '+${climb.gain.round()} m / −${climb.loss.round()} m',
+                  ),
                 const SizedBox(height: 16),
                 Text('Type de séance', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),

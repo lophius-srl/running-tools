@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -140,6 +141,26 @@ void main() {
       final a = CleanActivity.from(parseFitActivity(toFit(easyRun(km: 3))));
       expect(a.distanceM, closeTo(3000, 10));
       expect(a.rejectedFixes, 0);
+    });
+
+    test('D+ : bosses courtes comptées, bruit de ±1 m ignoré', () {
+      // Trois bosses de 8 m sur 80 m chacune, puis la bosse de 60 m.
+      double rolling(double d) {
+        final bump = d % 400;
+        if (d < 1200 && bump < 80) return 200 + 8 * sin(bump / 80 * pi);
+        return hillAt(d);
+      }
+
+      final a = CleanActivity.from(
+        parseGpxActivity(
+          toGpx(scriptedRun(km: 6, kmhAt: (_) => 11, elevationAt: rolling)),
+        ),
+      );
+      final c = a.elevationChange()!;
+      expect(c.gain, closeTo(3 * 8 + 60, 6));
+      expect(c.loss, closeTo(3 * 8 + 60, 6));
+      // Le profil lissé, lui, écrase les petites bosses.
+      expect(a.profile!.climb().gain, lessThan(c.gain - 10));
     });
 
     test('profil d’altitude lissé', () {

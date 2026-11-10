@@ -20,30 +20,69 @@ class CourseProfile {
 
   double get distanceM => (elevations.length - 1) * stepM;
 
-  /// Dénivelé positif et négatif (m). Les variations de moins de
-  /// [thresholdM] sont ignorées (bruit d'altitude), comme sur les montres.
+  /// Dénivelé positif et négatif (m), voir [elevationGainLoss].
   ({double gain, double loss}) climb([
     int from = 0,
     int? to,
     double thresholdM = 2,
-  ]) {
-    var gain = 0.0, loss = 0.0;
-    var reference = elevations[from];
-    for (var i = from + 1; i <= (to ?? elevations.length - 1); i++) {
-      final d = elevations[i] - reference;
-      if (d > thresholdM) {
-        gain += d;
-        reference = elevations[i];
-      } else if (d < -thresholdM) {
-        loss -= d;
-        reference = elevations[i];
-      }
-    }
-    return (gain: gain, loss: loss);
-  }
+  ]) => elevationGainLoss(
+    elevations.sublist(from, (to ?? elevations.length - 1) + 1),
+    thresholdM: thresholdM,
+  );
 
   /// Pente (fraction) du pas [i] → [i + 1].
   double gradeAt(int i) => (elevations[i + 1] - elevations[i]) / stepM;
+}
+
+/// Dénivelé positif et négatif (m) d'une suite d'altitudes : chaque montée
+/// compte du point le plus bas au plus haut, dès que l'écart dépasse
+/// [thresholdM] (en dessous, c'est du bruit d'altitude). Ainsi rien n'est
+/// perdu au sommet ni au creux.
+({double gain, double loss}) elevationGainLoss(
+  Iterable<double> elevations, {
+  double thresholdM = 2,
+}) {
+  var gain = 0.0, loss = 0.0;
+  double? reference, extreme;
+  bool? up;
+  for (final e in elevations) {
+    if (reference == null || extreme == null) {
+      reference = extreme = e;
+      continue;
+    }
+    if (up == null) {
+      if (e - reference >= thresholdM) {
+        up = true;
+        extreme = e;
+      } else if (reference - e >= thresholdM) {
+        up = false;
+        extreme = e;
+      }
+    } else if (up) {
+      if (e > extreme) {
+        extreme = e;
+      } else if (extreme - e >= thresholdM) {
+        gain += extreme - reference;
+        reference = extreme;
+        extreme = e;
+        up = false;
+      }
+    } else {
+      if (e < extreme) {
+        extreme = e;
+      } else if (e - extreme >= thresholdM) {
+        loss += reference - extreme;
+        reference = extreme;
+        extreme = e;
+        up = true;
+      }
+    }
+  }
+  if (reference != null && extreme != null) {
+    if (up == true) gain += extreme - reference;
+    if (up == false) loss += reference - extreme;
+  }
+  return (gain: gain, loss: loss);
 }
 
 /// Lit un GPX (trace ou itinéraire) avec altitudes. Le temps n'est pas
