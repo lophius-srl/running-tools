@@ -11,6 +11,7 @@ import '../deck/decks_page.dart';
 import '../fartlek/fartlek_setup_page.dart';
 import '../history/history_page.dart';
 import '../metronome/metronome_page.dart';
+import '../course/courses_page.dart';
 import '../ghost/ghost_page.dart';
 import '../gps/gps_check_page.dart';
 import '../orthostatic/orthostatic_page.dart';
@@ -78,6 +79,8 @@ class HomePage extends StatelessWidget {
         page = const GhostPage();
       case HomeEntry.duo:
         page = const GhostPage(duo: true);
+      case HomeEntry.simulator:
+        page = const CoursesPage();
       case HomeEntry.gps:
         page = const GpsCheckPage();
       case HomeEntry.orthostatic:

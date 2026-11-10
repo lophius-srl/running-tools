@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:running_tools/domain/ghost.dart';
 import 'package:running_tools/domain/gps_tracker.dart';
 import 'package:running_tools/domain/gpx.dart';
+import 'package:running_tools/features/common/gpx_picker.dart';
 import 'package:running_tools/features/ghost/ghost_page.dart';
 
 import '../../support/fakes.dart';
