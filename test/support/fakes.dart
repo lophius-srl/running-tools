@@ -19,6 +19,7 @@ import 'package:running_tools/data/recent_names_repository.dart';
 import 'package:running_tools/data/setup_repository.dart';
 import 'package:running_tools/data/workout_repository.dart';
 import 'package:running_tools/device/accelerometer.dart';
+import 'package:running_tools/device/heart_rate_monitor.dart';
 import 'package:running_tools/device/race_clock.dart';
 import 'package:running_tools/device/reminder_scheduler.dart';
 import 'package:running_tools/device/screen_wake_lock.dart';
@@ -380,6 +381,30 @@ class FakeDistanceMeasurer implements DistanceMeasurer {
   }
 }
 
+class FakeHeartRateMonitor implements HeartRateMonitor {
+  final _bpm = StreamController<int>.broadcast(sync: true);
+  final calls = <String>[];
+  static const belt = HeartRateDevice(id: 'belt-1', name: 'Ceinture test');
+
+  void emit(int bpm) => _bpm.add(bpm);
+
+  @override
+  Stream<List<HeartRateDevice>> scan() => Stream.value(const [belt]);
+
+  @override
+  Future<void> stopScan() async => calls.add('stopScan');
+
+  @override
+  Future<void> connect(HeartRateDevice device) async =>
+      calls.add('connect ${device.id}');
+
+  @override
+  Stream<int> get bpm => _bpm.stream;
+
+  @override
+  Future<void> disconnect() async => calls.add('disconnect');
+}
+
 /// Remplace tous les services natifs par des faux.
 List<Override> fakeOverrides({
   FakeSetupRepository? setups,
@@ -400,7 +425,11 @@ List<Override> fakeOverrides({
   FakeFartlekRepository? fartleks,
   FakeDeckRepository? decks,
   FakeOrthostaticRepository? orthostatic,
+  FakeHeartRateMonitor? heartRate,
 }) => [
+  heartRateMonitorFactoryProvider.overrideWithValue(
+    () => heartRate ?? FakeHeartRateMonitor(),
+  ),
   orthostaticRepositoryProvider.overrideWith(
     (ref) async => orthostatic ?? FakeOrthostaticRepository(),
   ),

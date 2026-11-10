@@ -52,9 +52,37 @@ class _OrthostaticPageState extends ConsumerState<OrthostaticPage> {
   }
 
   Future<void> _start() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const OrthostaticRunPage()));
+    final source = await showModalBottomSheet<HeartRateSourceKind>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text(
+                'Mesurer la fréquence cardiaque avec',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            for (final (kind, icon) in [
+              (HeartRateSourceKind.bluetooth, Icons.bluetooth),
+              (HeartRateSourceKind.manual, Icons.touch_app),
+            ])
+              ListTile(
+                leading: Icon(icon),
+                title: Text(kind.label, style: const TextStyle(fontSize: 18)),
+                onTap: () => Navigator.of(context).pop(kind),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => OrthostaticRunPage(source: source),
+      ),
+    );
     await _load();
   }
 

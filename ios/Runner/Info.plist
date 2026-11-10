@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Le Bluetooth sert à lire ta ceinture cardio pendant le test orthostatique.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>La caméra sert à mesurer les distances au sol (réalité augmentée).</string>
 	<key>UIApplicationSceneManifest</key>
