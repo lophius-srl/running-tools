@@ -48,6 +48,12 @@ enum HomeEntry {
     Icons.terrain,
     [Color(0xFF15803D), Color(0xFF1E63E9)],
   ),
+  debrief(
+    'Débrief de sortie',
+    'Comment mieux gérer ta course',
+    Icons.insights,
+    [Color(0xFF0E7490), Color(0xFF1E63E9)],
+  ),
   gps('Suivi GPS', 'Vérifier distance et allure en direct', Icons.gps_fixed, [
     Color(0xFF0F766E),
     Color(0xFF1E63E9),
@@ -155,6 +161,7 @@ enum HomeTab {
     HomeEntry.lanes,
   ]),
   me('Moi', Icons.person_outline, Icons.person, [
+    HomeEntry.debrief,
     HomeEntry.history,
     HomeEntry.orthostatic,
     HomeEntry.gps,

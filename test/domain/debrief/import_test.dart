@@ -1,0 +1,160 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:running_tools/domain/debrief/clean_activity.dart';
+import 'package:running_tools/domain/debrief/fit_reader.dart';
+import 'package:running_tools/domain/debrief/gpx_activity.dart';
+import 'package:running_tools/domain/debrief/session_type.dart';
+
+import '../../fixtures/activities.dart';
+
+void main() {
+  group('lecture', () {
+    test('export Strava : nom, FC et cadence dans les extensions', () {
+      final raw = parseGpxActivity(
+        File('test/fixtures/strava_export.gpx').readAsStringSync(),
+      );
+      expect(raw.name, 'Course à pied le matin');
+      expect(raw.samples, hasLength(4));
+      expect(raw.samples[1].heartRate, 101);
+      expect(raw.samples[1].cadence, 82);
+      expect(raw.samples[1].elevationM, 170.3);
+    });
+
+    test('FIT : records lus, autres messages sautés, temps compressé', () {
+      final points = easyRun(km: 1);
+      final raw = parseFitActivity(toFit(points), name: 'Garmin');
+      expect(raw.samples, hasLength(points.length));
+      final first = raw.samples.first;
+      expect(first.time, DateTime.utc(2026, 11, 8, 9));
+      expect(first.position!.latitude, closeTo(45.75, 1e-4));
+      expect(first.elevationM, closeTo(points.first.elevation, 0.2));
+      expect(first.heartRate, points.first.hr);
+      expect(first.distanceM, isNotNull);
+      // Dernier point : horodatage reconstruit depuis l'en-tête compressé.
+      expect(
+        raw.samples.last.time,
+        DateTime.utc(2026, 11, 8, 9).add(Duration(seconds: points.last.second)),
+      );
+    });
+
+    test('FIT : FC absente (0xFF) lue comme manquante', () {
+      final raw = parseFitActivity(
+        toFit(easyRun(km: 0.5, withHeartRate: false)),
+      );
+      expect(raw.samples.every((s) => s.heartRate == null), isTrue);
+    });
+
+    test('fichiers illisibles : erreur claire', () {
+      expect(() => parseGpxActivity('<<'), throwsFormatException);
+      expect(
+        () => parseFitActivity(Uint8List.fromList([1, 2, 3])),
+        throwsFormatException,
+      );
+    });
+  });
+
+  group('nettoyage', () {
+    test('footing propre : distance, temps, cadence en pas/min', () {
+      final a = CleanActivity.from(parseGpxActivity(toGpx(easyRun())));
+      expect(a.distanceM, closeTo(5000, 75));
+      expect(a.movingS, closeTo(5000 / (11 / 3.6), 15));
+      expect(a.pauses, isEmpty);
+      expect(a.hasHeartRate && a.hasCadence && a.hasElevation, isTrue);
+      expect(a.points[100].cadence, inInclusiveRange(168, 172));
+    });
+
+    test('pause au km 2 détectée et retirée du temps', () {
+      final a = CleanActivity.from(
+        parseGpxActivity(toGpx(easyRun(pauseS: 90))),
+      );
+      expect(a.pauses, hasLength(1));
+      expect(a.pauses.single.atM, closeTo(2000, 30));
+      expect(a.pauses.single.duration.inSeconds, closeTo(90, 5));
+      expect(a.elapsed.inSeconds - a.movingS, closeTo(90, 6));
+    });
+
+    test('trou dans l’enregistrement (pause auto) : compté comme pause', () {
+      final points = easyRun(km: 2);
+      final shifted = [
+        for (final p in points)
+          p.second < 300
+              ? p
+              : FixturePoint(
+                  p.second + 120,
+                  p.northM,
+                  p.elevation,
+                  p.hr,
+                  p.cad,
+                ),
+      ];
+      final a = CleanActivity.from(parseGpxActivity(toGpx(shifted)));
+      expect(a.pauses.single.duration.inSeconds, 121);
+    });
+
+    test('FC aberrante écartée ; sans FC ni cadence, pas d’erreur', () {
+      final strava = CleanActivity.from(
+        parseGpxActivity(
+          File('test/fixtures/strava_export.gpx').readAsStringSync(),
+        ),
+      );
+      expect(strava.points.map((p) => p.heartRate), isNot(contains(255)));
+      final bare = CleanActivity.from(
+        parseGpxActivity(
+          toGpx(easyRun(withHeartRate: false, withCadence: false)),
+        ),
+      );
+      expect(bare.hasHeartRate, isFalse);
+      expect(bare.hasCadence, isFalse);
+      expect(bare.distanceM, greaterThan(4900));
+    });
+
+    test('FIT : distance de la montre utilisée', () {
+      final a = CleanActivity.from(parseFitActivity(toFit(easyRun(km: 3))));
+      expect(a.distanceM, closeTo(3000, 10));
+      expect(a.rejectedFixes, 0);
+    });
+
+    test('profil d’altitude lissé', () {
+      final a = CleanActivity.from(parseGpxActivity(toGpx(easyRun(km: 2))));
+      final profile = a.profile!;
+      expect(profile.distanceM, closeTo(a.distanceM, 10));
+      expect(profile.climb().gain, lessThan(5));
+    });
+  });
+
+  group('type de séance', () {
+    CleanActivity run(List<FixturePoint> p) =>
+        CleanActivity.from(parseGpxActivity(toGpx(p)));
+
+    test('footing : endurance', () {
+      expect(
+        detectSessionType(run(easyRun()), vmaKmh: 16),
+        SessionType.endurance,
+      );
+    });
+
+    test('20 km : sortie longue', () {
+      expect(detectSessionType(run(easyRun(km: 20))), SessionType.long);
+    });
+
+    test('allure régulière à 90 % de VMA sur 10 km : course', () {
+      expect(
+        detectSessionType(run(easyRun(km: 10, kmh: 14.4)), vmaKmh: 16),
+        SessionType.race,
+      );
+    });
+
+    test('8 × (1 min vite, 1 min lent) : fractionné', () {
+      final points = <FixturePoint>[];
+      var d = 0.0;
+      for (var s = 0; s < 20 * 60; s++) {
+        final fast = s >= 180 && (s - 180) ~/ 60 % 2 == 0 && s < 180 + 16 * 60;
+        d += (fast ? 16 : 9) / 3.6;
+        points.add(FixturePoint(s, d, 200, 150, 85));
+      }
+      expect(detectSessionType(run(points), vmaKmh: 17), SessionType.interval);
+    });
+  });
+}
