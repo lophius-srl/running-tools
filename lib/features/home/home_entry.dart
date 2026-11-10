@@ -34,12 +34,10 @@ enum HomeEntry {
     Color(0xFF0EA5E9),
     Color(0xFF1E63E9),
   ]),
-  ghost(
-    'Fantôme',
-    'Course contre une sortie de référence',
-    Icons.person_outline,
-    [Color(0xFF6D28D9), Color(0xFF1E63E9)],
-  ),
+  ghost('Fantôme', 'Bats ta sortie de référence', Icons.person_outline, [
+    Color(0xFF6D28D9),
+    Color(0xFF1E63E9),
+  ]),
   duo('Duo', 'En direct contre la sortie d’un ami', Icons.people, [
     Color(0xFFC026D3),
     Color(0xFF1E63E9),
@@ -50,7 +48,7 @@ enum HomeEntry {
     Icons.terrain,
     [Color(0xFF15803D), Color(0xFF1E63E9)],
   ),
-  gps('Suivi GPS', 'Distance et allure en direct', Icons.gps_fixed, [
+  gps('Suivi GPS', 'Vérifier distance et allure en direct', Icons.gps_fixed, [
     Color(0xFF0F766E),
     Color(0xFF1E63E9),
   ]),
@@ -94,27 +92,6 @@ enum HomeEntry {
   final IconData icon;
   final List<Color> gradient;
 
-  static const tests = [cooper, halfCooper, vameval, lucLeger];
-  static const training = [
-    workouts,
-    fartlek,
-    deck,
-    ghost,
-    duo,
-    metronome,
-    multiTimer,
-    club,
-    lanes,
-  ];
-  static const tools = [
-    history,
-    simulator,
-    orthostatic,
-    gps,
-    checklists,
-    setup,
-  ];
-
   /// Entrée de l'accueil d'un test par paliers (pour reprendre ses couleurs).
   static HomeEntry ofStagedTest(StagedTest test) => switch (test) {
     StagedTest.vameval => vameval,
@@ -146,4 +123,55 @@ enum HomeEntry {
     lucLeger => StagedTest.lucLeger,
     _ => null,
   };
+}
+
+/// Onglets de l'accueil.
+enum HomeTab {
+  tests('Tests', Icons.timer_outlined, Icons.timer, [
+    HomeEntry.cooper,
+    HomeEntry.halfCooper,
+    HomeEntry.vameval,
+    HomeEntry.lucLeger,
+    HomeEntry.club,
+    HomeEntry.setup,
+  ]),
+  training(
+    'Entraînement',
+    Icons.directions_run_outlined,
+    Icons.directions_run,
+    [
+      HomeEntry.workouts,
+      HomeEntry.fartlek,
+      HomeEntry.deck,
+      HomeEntry.ghost,
+      HomeEntry.duo,
+      HomeEntry.metronome,
+      HomeEntry.multiTimer,
+    ],
+  ),
+  raceDay('Jour J', Icons.flag_outlined, Icons.flag, [
+    HomeEntry.simulator,
+    HomeEntry.checklists,
+    HomeEntry.lanes,
+  ]),
+  me('Moi', Icons.person_outline, Icons.person, [
+    HomeEntry.history,
+    HomeEntry.orthostatic,
+    HomeEntry.gps,
+  ]);
+
+  const HomeTab(this.label, this.icon, this.selectedIcon, this.entries);
+
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final List<HomeEntry> entries;
+
+  /// Les quatre tests de VMA, en grandes tuiles.
+  static const vmaTests = [
+    HomeEntry.cooper,
+    HomeEntry.halfCooper,
+    HomeEntry.vameval,
+    HomeEntry.lucLeger,
+  ];
 }
