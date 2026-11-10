@@ -19,6 +19,7 @@ import 'package:running_tools/data/recent_names_repository.dart';
 import 'package:running_tools/data/setup_repository.dart';
 import 'package:running_tools/data/workout_repository.dart';
 import 'package:running_tools/device/accelerometer.dart';
+import 'package:running_tools/device/heart_rate_history.dart';
 import 'package:running_tools/device/heart_rate_monitor.dart';
 import 'package:running_tools/device/race_clock.dart';
 import 'package:running_tools/device/reminder_scheduler.dart';
@@ -405,6 +406,23 @@ class FakeHeartRateMonitor implements HeartRateMonitor {
   Future<void> disconnect() async => calls.add('disconnect');
 }
 
+class FakeHeartRateHistory implements HeartRateHistory {
+  var authorized = true;
+
+  /// Mesures, décalées par rapport au début de la période demandée.
+  final readings = <({Duration offset, int bpm})>[];
+  (DateTime, DateTime)? lastQuery;
+
+  @override
+  Future<bool> authorize() async => authorized;
+
+  @override
+  Future<List<DatedHeartRate>> between(DateTime start, DateTime end) async {
+    lastQuery = (start, end);
+    return [for (final r in readings) (at: start.add(r.offset), bpm: r.bpm)];
+  }
+}
+
 /// Remplace tous les services natifs par des faux.
 List<Override> fakeOverrides({
   FakeSetupRepository? setups,
@@ -426,7 +444,11 @@ List<Override> fakeOverrides({
   FakeDeckRepository? decks,
   FakeOrthostaticRepository? orthostatic,
   FakeHeartRateMonitor? heartRate,
+  FakeHeartRateHistory? healthHeartRate,
 }) => [
+  heartRateHistoryProvider.overrideWithValue(
+    healthHeartRate ?? FakeHeartRateHistory(),
+  ),
   heartRateMonitorFactoryProvider.overrideWithValue(
     () => heartRate ?? FakeHeartRateMonitor(),
   ),

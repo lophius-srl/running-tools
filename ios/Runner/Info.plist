@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Apple Santé fournit ta fréquence cardiaque pendant le test orthostatique (lecture seule).</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>L’app n’écrit rien dans Apple Santé.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Le Bluetooth sert à lire ta ceinture cardio pendant le test orthostatique.</string>
 	<key>NSCameraUsageDescription</key>

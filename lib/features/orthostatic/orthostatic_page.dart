@@ -66,6 +66,7 @@ class _OrthostaticPageState extends ConsumerState<OrthostaticPage> {
             ),
             for (final (kind, icon) in [
               (HeartRateSourceKind.bluetooth, Icons.bluetooth),
+              (HeartRateSourceKind.health, Icons.favorite),
               (HeartRateSourceKind.manual, Icons.touch_app),
             ])
               ListTile(
