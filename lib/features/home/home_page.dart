@@ -11,6 +11,7 @@ import '../common/decimal_text.dart';
 import '../checklists/checklists_page.dart';
 import '../checklists/race_checklist_page.dart';
 import '../club/club_setup_page.dart';
+import '../debrief/debriefs_page.dart';
 import '../deck/decks_page.dart';
 import '../fartlek/fartlek_setup_page.dart';
 import '../history/history_page.dart';
@@ -93,6 +94,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         page = const GhostPage(duo: true);
       case HomeEntry.simulator:
         page = const CoursesPage();
+      case HomeEntry.debrief:
+        page = const DebriefsPage();
       case HomeEntry.gps:
         page = const GpsCheckPage();
       case HomeEntry.orthostatic:

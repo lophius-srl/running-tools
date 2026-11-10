@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX Android" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
+ <metadata>
+  <time>2026-11-08T08:00:00Z</time>
+ </metadata>
+ <trk>
+  <name>Course à pied le matin</name>
+  <type>running</type>
+  <trkseg>
+   <trkpt lat="45.7500000" lon="4.8500000">
+    <ele>170.2</ele>
+    <time>2026-11-08T08:00:00Z</time>
+    <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>98</gpxtpx:hr><gpxtpx:cad>0</gpxtpx:cad></gpxtpx:TrackPointExtension></extensions>
+   </trkpt>
+   <trkpt lat="45.7500270" lon="4.8500000">
+    <ele>170.3</ele>
+    <time>2026-11-08T08:00:01Z</time>
+    <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>101</gpxtpx:hr><gpxtpx:cad>82</gpxtpx:cad></gpxtpx:TrackPointExtension></extensions>
+   </trkpt>
+   <trkpt lat="45.7500540" lon="4.8500000">
+    <ele>170.3</ele>
+    <time>2026-11-08T08:00:02Z</time>
+    <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>104</gpxtpx:hr><gpxtpx:cad>84</gpxtpx:cad></gpxtpx:TrackPointExtension></extensions>
+   </trkpt>
+   <trkpt lat="45.7500810" lon="4.8500000">
+    <ele>170.4</ele>
+    <time>2026-11-08T08:00:03Z</time>
+    <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>255</gpxtpx:hr><gpxtpx:cad>85</gpxtpx:cad></gpxtpx:TrackPointExtension></extensions>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>
