@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:running_tools/domain/test_record.dart';
 import 'package:running_tools/features/common/gpx_picker.dart';
 import 'package:running_tools/features/debrief/debriefs_page.dart';
 
@@ -13,8 +14,9 @@ import '../../support/fakes.dart';
 void main() {
   Future<void> pumpPage(
     WidgetTester tester,
-    ({String name, Uint8List bytes}) file,
-  ) async {
+    ({String name, Uint8List bytes}) file, {
+    FakeHistoryRepository? history,
+  }) async {
     tester.view
       ..physicalSize = const Size(1179, 2556)
       ..devicePixelRatio = 3;
@@ -22,7 +24,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          ...fakeOverrides(),
+          ...fakeOverrides(history: history),
           activityFilePickerProvider.overrideWithValue(() async => file),
         ],
         child: const MaterialApp(home: DebriefsPage()),
@@ -76,5 +78,73 @@ void main() {
       bytes: Uint8List.fromList(utf8.encode('pas un gpx')),
     ));
     expect(find.text('Fichier GPX illisible.'), findsOneWidget);
+  });
+
+  testWidgets('analyses : allure, relief et VMA', (tester) async {
+    final history = FakeHistoryRepository()
+      ..records.add(
+        TestRecord(
+          id: 't',
+          date: DateTime(2026, 10, 1),
+          kind: TestKind.vameval,
+          vmaKmh: 16,
+          vo2max: 56,
+        ),
+      );
+    final gpx = toGpx(
+      scriptedRun(
+        km: 8,
+        kmhAt: (d) => d < 3000 ? 13 : 11,
+        elevationAt: hillAt,
+        hrAt: (d, s) => d > 2000 && d < 3000 ? 178 : 150,
+      ),
+    );
+    await pumpPage(tester, (
+      name: 'sortie.gpx',
+      bytes: Uint8List.fromList(utf8.encode(gpx)),
+    ), history: history);
+    await tester.scrollUntilVisible(
+      find.text('Allure'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('Split positif'), findsOneWidget);
+    expect(find.textContaining('Départ rapide'), findsOneWidget);
+    expect(
+      find.textContaining('Temps gagnable estimé : environ'),
+      findsOneWidget,
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('Relief'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Relief'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('FC max 178'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.textContaining('de ta VMA (16 km/h)'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('de ta VMA (16 km/h)'), findsOneWidget);
+  });
+
+  testWidgets('sans test de VMA : invitation', (tester) async {
+    final gpx = toGpx(scriptedRun(km: 3, kmhAt: (_) => 11));
+    await pumpPage(tester, (
+      name: 's.gpx',
+      bytes: Uint8List.fromList(utf8.encode(gpx)),
+    ));
+    await tester.scrollUntilVisible(
+      find.text('VMA'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.text('Fais un test de VMA pour comparer ta sortie.'),
+      findsOneWidget,
+    );
   });
 }

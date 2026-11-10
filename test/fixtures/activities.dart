@@ -168,3 +168,43 @@ Uint8List toFit(List<FixturePoint> points) {
     ..add([0, 0]);
   return bytes.toBytes();
 }
+
+/// Sortie scénarisée : vitesse [kmhAt] et altitude [elevationAt] selon la
+/// distance (m), FC [hrAt] selon la distance et le temps. Bruit GPS ±[noiseM].
+List<FixturePoint> scriptedRun({
+  required double km,
+  required double Function(double d) kmhAt,
+  double Function(double d)? elevationAt,
+  int? Function(double d, int second)? hrAt,
+  int? Function(double d, int second)? cadAt,
+  double noiseM = 2,
+  int seed = 7,
+}) {
+  final random = Random(seed);
+  final points = <FixturePoint>[];
+  var d = 0.0;
+  var s = 0;
+  while (d < km * 1000) {
+    d += kmhAt(d) / 3.6;
+    points.add(
+      FixturePoint(
+        s,
+        d + (random.nextDouble() - 0.5) * 2 * noiseM,
+        elevationAt?.call(d) ?? 200,
+        hrAt?.call(d, s),
+        cadAt?.call(d, s),
+      ),
+    );
+    s++;
+  }
+  return points;
+}
+
+/// 2 km plat, 1 km à +6 %, 1 km à −6 %, puis plat (altitude selon la
+/// distance en m).
+double hillAt(double d) {
+  if (d <= 2000) return 200;
+  if (d <= 3000) return 200 + (d - 2000) * 0.06;
+  if (d <= 4000) return 260 - (d - 3000) * 0.06;
+  return 200;
+}

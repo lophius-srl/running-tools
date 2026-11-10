@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/debrief/clean_activity.dart';
+import '../../domain/debrief/effort_track.dart';
+import '../../domain/debrief/pacing_analysis.dart';
 import '../../domain/debrief/session_type.dart';
 import '../../domain/training_paces.dart';
 import '../common/date_text.dart';
 import '../common/run_widgets.dart';
 import '../course/course_text.dart';
 import '../home/home_entry.dart';
+import 'analysis_sections.dart';
 
 /// Étape 1 du débrief : ce qui a été lu dans la sortie, et son type.
 class ActivitySummaryPage extends StatefulWidget {
@@ -14,10 +17,14 @@ class ActivitySummaryPage extends StatefulWidget {
     super.key,
     required this.activity,
     required this.detected,
+    this.vmaKmh,
   });
 
   final CleanActivity activity;
   final SessionType detected;
+
+  /// VMA du dernier test, `null` si aucun.
+  final double? vmaKmh;
 
   @override
   State<ActivitySummaryPage> createState() => _ActivitySummaryPageState();
@@ -25,6 +32,8 @@ class ActivitySummaryPage extends StatefulWidget {
 
 class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
   late var _type = widget.detected;
+  late final _track = EffortTrack(widget.activity);
+  late final _hills = hillReports(_track);
 
   @override
   Widget build(BuildContext context) {
@@ -125,9 +134,20 @@ class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
                   'Détecté : ${widget.detected.label}. Corrige si besoin.',
                   style: theme.textTheme.bodySmall,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                PacingTile(pacing: PacingAnalysis.of(_track, _type)),
+                if (a.hasElevation) HillsTile(hills: _hills),
+                VmaTile(
+                  comparison: widget.vmaKmh == null
+                      ? null
+                      : compareToVma(_track, _type, widget.vmaKmh!),
+                  vmaKmh: widget.vmaKmh,
+                  type: _type,
+                ),
+                const SizedBox(height: 8),
                 Text(
-                  'Les analyses arrivent à l’étape suivante.',
+                  'Indications d’entraînement, pas un avis médical. Cardio et '
+                  'cadence arrivent à l’étape suivante.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall,
                 ),
