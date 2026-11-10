@@ -21,6 +21,7 @@ import 'package:running_tools/data/workout_repository.dart';
 import 'package:running_tools/device/accelerometer.dart';
 import 'package:running_tools/device/heart_rate_history.dart';
 import 'package:running_tools/device/heart_rate_monitor.dart';
+import 'package:running_tools/device/location_source.dart';
 import 'package:running_tools/device/race_clock.dart';
 import 'package:running_tools/device/reminder_scheduler.dart';
 import 'package:running_tools/device/screen_wake_lock.dart';
@@ -28,6 +29,7 @@ import 'package:running_tools/device/share_service.dart';
 import 'package:running_tools/domain/cadence_advice.dart';
 import 'package:running_tools/domain/checklist.dart';
 import 'package:running_tools/domain/deck.dart';
+import 'package:running_tools/domain/gps_tracker.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
 import 'package:running_tools/domain/orthostatic.dart';
 import 'package:running_tools/domain/stage_protocol.dart';
@@ -423,6 +425,22 @@ class FakeHeartRateHistory implements HeartRateHistory {
   }
 }
 
+class FakeLocationSource implements LocationSource {
+  var access = LocationAccess.granted;
+  StreamController<GpsFix>? _fixes;
+
+  bool get tracking => _fixes?.hasListener ?? false;
+
+  void emit(GpsFix fix) => _fixes!.add(fix);
+
+  @override
+  Future<LocationAccess> requestAccess() async => access;
+
+  @override
+  Stream<GpsFix> fixes() =>
+      (_fixes = StreamController<GpsFix>(sync: true)).stream;
+}
+
 /// Remplace tous les services natifs par des faux.
 List<Override> fakeOverrides({
   FakeSetupRepository? setups,
@@ -445,7 +463,9 @@ List<Override> fakeOverrides({
   FakeOrthostaticRepository? orthostatic,
   FakeHeartRateMonitor? heartRate,
   FakeHeartRateHistory? healthHeartRate,
+  FakeLocationSource? location,
 }) => [
+  locationSourceProvider.overrideWithValue(location ?? FakeLocationSource()),
   heartRateHistoryProvider.overrideWithValue(
     healthHeartRate ?? FakeHeartRateHistory(),
   ),
