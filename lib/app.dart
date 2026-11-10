@@ -5,6 +5,7 @@ import 'app_theme.dart';
 import 'device/reminder_scheduler.dart';
 import 'features/checklists/race_checklist_page.dart';
 import 'features/home/home_page.dart';
+import 'features/orthostatic/orthostatic_page.dart';
 
 class RunningToolsApp extends ConsumerStatefulWidget {
   const RunningToolsApp({super.key});
@@ -31,9 +32,12 @@ class _RunningToolsAppState extends ConsumerState<RunningToolsApp> {
     if (payload != null) _openChecklist(payload);
   }
 
-  void _openChecklist(String checklistId) => _navigator.currentState?.push(
+  /// Notification touchée : test orthostatique ou checklist de course.
+  void _openChecklist(String payload) => _navigator.currentState?.push(
     MaterialPageRoute<void>(
-      builder: (_) => RaceChecklistPage(checklistId: checklistId),
+      builder: (_) => payload == orthostaticPayload
+          ? const OrthostaticPage()
+          : RaceChecklistPage(checklistId: payload),
     ),
   );
 
