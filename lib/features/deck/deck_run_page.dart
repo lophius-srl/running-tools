@@ -160,6 +160,7 @@ class _DeckRunPageState extends ConsumerState<DeckRunPage> {
         page,
         Positioned.fill(
           child: PocketModeOverlay(
+            entry: HomeEntry.deck,
             onExit: () => setState(() => _pocketMode = false),
           ),
         ),

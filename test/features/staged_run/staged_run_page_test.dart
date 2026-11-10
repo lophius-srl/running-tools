@@ -129,7 +129,9 @@ void main() {
     expect(find.text('VMA 14,5 km/h'), findsOneWidget);
   });
 
-  testWidgets('mode poche : maintien en haut pour en sortir', (tester) async {
+  testWidgets('mode poche : maintien du cadenas pour en sortir', (
+    tester,
+  ) async {
     await pumpPage(tester);
     await tester.tap(find.byTooltip('Mode poche'));
     await tester.pump();
