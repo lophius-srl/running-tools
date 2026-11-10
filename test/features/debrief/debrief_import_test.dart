@@ -4,6 +4,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:running_tools/domain/debrief/debrief_summary.dart';
+import 'package:running_tools/domain/debrief/session_type.dart';
+import 'package:running_tools/domain/gps_tracker.dart';
 import 'package:running_tools/domain/test_record.dart';
 import 'package:running_tools/features/common/gpx_picker.dart';
 import 'package:running_tools/features/debrief/debriefs_page.dart';
@@ -30,6 +33,7 @@ void main() {
     ({String name, Uint8List bytes}) file, {
     FakeHistoryRepository? history,
     FakePreferencesRepository? preferences,
+    FakeDebriefRepository? debriefs,
   }) async {
     tester.view
       ..physicalSize = const Size(1179, 2556)
@@ -38,7 +42,11 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          ...fakeOverrides(history: history, preferences: preferences),
+          ...fakeOverrides(
+            history: history,
+            preferences: preferences,
+            debriefs: debriefs,
+          ),
           activityFilePickerProvider.overrideWithValue(() async => file),
         ],
         child: const MaterialApp(home: DebriefsPage()),
@@ -58,13 +66,25 @@ void main() {
       bytes: Uint8List.fromList(utf8.encode(gpx)),
     ));
     expect(find.text('Footing du dimanche'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('4,99 km'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('4,99 km'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Sortie longue'),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(
-      find.text('Détecté : Endurance. Corrige si besoin.'),
+      find.text('Type détecté : Endurance. Corrige si besoin.'),
       findsOneWidget,
     );
+    await tester.ensureVisible(find.text('Sortie longue'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sortie longue'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     final chip = tester.widget<ChoiceChip>(
       find.widgetWithText(ChoiceChip, 'Sortie longue'),
     );
@@ -211,5 +231,94 @@ void main() {
     );
     expect(find.textContaining('Ton cœur a dérivé'), findsNothing);
     expect(prefs.maxHr, isNull);
+  });
+
+  testWidgets('note en haut, graphique, débrief gardé et mis à jour', (
+    tester,
+  ) async {
+    final debriefs = FakeDebriefRepository();
+    final gpx = toGpx(
+      scriptedRun(
+        km: 8,
+        kmhAt: (d) => d < 3000 ? 13 : 11,
+        elevationAt: hillAt,
+        hrAt: (d, s) => d > 2000 && d < 3000 ? 178 : 150,
+      ),
+    );
+    await pumpPage(tester, (
+      name: 'sortie.gpx',
+      bytes: Uint8List.fromList(utf8.encode(gpx)),
+    ), debriefs: debriefs);
+    expect(find.text('/ 100'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Fréquence cardiaque (bpm)'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Altitude (m)'), findsOneWidget);
+    expect(find.text('Allure (/km)'), findsOneWidget);
+    expect(find.text('Fréquence cardiaque (bpm)'), findsOneWidget);
+    final saved = debriefs.debriefs.single;
+    expect(saved.type, SessionType.endurance);
+    expect(saved.findings, isNotEmpty);
+    expect(saved.gainableS, greaterThan(0));
+
+    await tester.scrollUntilVisible(
+      find.text('Course'),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Course'));
+    await tester.pumpAndSettle();
+    expect(debriefs.debriefs.single.type, SessionType.race);
+
+    // Retour à la liste : le débrief y est.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Mes débriefs'), findsOneWidget);
+    expect(find.text('Footing du dimanche'), findsOneWidget);
+  });
+
+  testWidgets('comparer deux débriefs du même parcours', (tester) async {
+    final debriefs = FakeDebriefRepository();
+    DebriefSummary d(String id, int day, double movingS, int score) =>
+        DebriefSummary(
+          id: id,
+          date: DateTime(2026, 11, day, 8),
+          name: 'Boucle du parc',
+          type: SessionType.endurance,
+          distanceM: 10000,
+          movingS: movingS,
+          score: score,
+          findings: const ['Tu es parti trop vite.'],
+          gapPaceS: movingS / 10,
+          start: const GeoPoint(45.75, 4.85),
+        );
+    debriefs.debriefs.addAll([d('a', 1, 3300, 72), d('b', 8, 3180, 88)]);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: fakeOverrides(debriefs: debriefs),
+        child: const MaterialApp(home: DebriefsPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('88'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Comparer avec une autre sortie'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Comparer avec une autre sortie'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('même parcours'), findsOneWidget);
+    await tester.tap(find.textContaining('même parcours'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Même parcours : la comparaison est parlante.'),
+      findsOneWidget,
+    );
+    expect(find.text('72/100'), findsOneWidget);
+    expect(find.text('88/100'), findsOneWidget);
   });
 }

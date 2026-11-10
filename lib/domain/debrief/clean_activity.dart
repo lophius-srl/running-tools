@@ -70,6 +70,7 @@ class CleanActivity {
     required this.hasHeartRate,
     required this.hasCadence,
     required this.hasElevation,
+    required this.startPosition,
   });
 
   factory CleanActivity.from(
@@ -208,6 +209,9 @@ class CleanActivity {
       hasHeartRate: enough((p) => p.heartRate != null),
       hasCadence: enough((p) => p.cadence != null),
       hasElevation: enough((p) => p.elevationM != null),
+      startPosition: samples
+          .map((s) => s.position)
+          .firstWhere((p) => p != null, orElse: () => null),
     );
   }
 
@@ -220,6 +224,9 @@ class CleanActivity {
   final bool hasHeartRate;
   final bool hasCadence;
   final bool hasElevation;
+
+  /// Point de départ, pour reconnaître un même parcours.
+  final GeoPoint? startPosition;
 
   double get distanceM => points.last.distanceM;
   double get movingS => points.last.timeS;

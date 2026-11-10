@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'checklist_repository.dart';
 import 'deck_repository.dart';
 import 'course_repository.dart';
+import 'debrief_repository.dart';
 import 'fartlek_repository.dart';
 import 'ghost_repository.dart';
 import 'history_repository.dart';
@@ -70,4 +71,9 @@ final ghostRepositoryProvider = FutureProvider<GhostRepository>(
 
 final courseRepositoryProvider = FutureProvider<CourseRepository>(
   (ref) async => JsonCourseRepository(await getApplicationDocumentsDirectory()),
+);
+
+final debriefRepositoryProvider = FutureProvider<DebriefRepository>(
+  (ref) async =>
+      JsonDebriefRepository(await getApplicationDocumentsDirectory()),
 );

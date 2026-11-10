@@ -11,6 +11,7 @@ import 'package:running_tools/audio/audio_program.dart';
 import 'package:running_tools/audio/track_service.dart';
 import 'package:running_tools/data/checklist_repository.dart';
 import 'package:running_tools/data/course_repository.dart';
+import 'package:running_tools/data/debrief_repository.dart';
 import 'package:running_tools/data/deck_repository.dart';
 import 'package:running_tools/data/fartlek_repository.dart';
 import 'package:running_tools/data/ghost_repository.dart';
@@ -31,6 +32,7 @@ import 'package:running_tools/device/screen_wake_lock.dart';
 import 'package:running_tools/device/share_service.dart';
 import 'package:running_tools/domain/cadence_advice.dart';
 import 'package:running_tools/domain/checklist.dart';
+import 'package:running_tools/domain/debrief/debrief_summary.dart';
 import 'package:running_tools/domain/deck.dart';
 import 'package:running_tools/domain/ghost.dart';
 import 'package:running_tools/domain/gps_tracker.dart';
@@ -526,6 +528,25 @@ class FakeCourseRepository implements CourseRepository {
       courses.removeWhere((c) => c.id == id);
 }
 
+class FakeDebriefRepository implements DebriefRepository {
+  final debriefs = <DebriefSummary>[];
+
+  @override
+  Future<List<DebriefSummary>> all() async =>
+      [...debriefs]..sort((a, b) => b.date.compareTo(a.date));
+
+  @override
+  Future<void> save(DebriefSummary debrief) async {
+    debriefs
+      ..removeWhere((d) => d.id == debrief.id)
+      ..add(debrief);
+  }
+
+  @override
+  Future<void> delete(String id) async =>
+      debriefs.removeWhere((d) => d.id == id);
+}
+
 /// Remplace tous les services natifs par des faux.
 List<Override> fakeOverrides({
   FakeSetupRepository? setups,
@@ -552,7 +573,11 @@ List<Override> fakeOverrides({
   FakeLiveVoice? voice,
   FakeGhostRepository? ghosts,
   FakeCourseRepository? courses,
+  FakeDebriefRepository? debriefs,
 }) => [
+  debriefRepositoryProvider.overrideWith(
+    (ref) async => debriefs ?? FakeDebriefRepository(),
+  ),
   courseRepositoryProvider.overrideWith(
     (ref) async => courses ?? FakeCourseRepository(),
   ),

@@ -4,11 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/providers.dart';
 import '../../domain/debrief/activity_file.dart';
 import '../../domain/debrief/clean_activity.dart';
+import '../../domain/debrief/debrief_summary.dart';
 import '../../domain/debrief/session_type.dart';
+import '../common/date_text.dart';
 import '../common/gpx_picker.dart';
 import '../common/run_widgets.dart';
+import '../course/course_text.dart';
 import '../home/home_entry.dart';
 import 'activity_summary_page.dart';
+import 'saved_debrief_pages.dart';
 
 /// Débriefs de sortie : import d'une sortie GPX ou FIT.
 class DebriefsPage extends ConsumerStatefulWidget {
@@ -20,6 +24,28 @@ class DebriefsPage extends ConsumerStatefulWidget {
 
 class _DebriefsPageState extends ConsumerState<DebriefsPage> {
   var _busy = false;
+  var _debriefs = <DebriefSummary>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final repo = await ref.read(debriefRepositoryProvider.future);
+    final list = await repo.all();
+    if (mounted) setState(() => _debriefs = list);
+  }
+
+  Future<void> _openSaved(DebriefSummary d) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SavedDebriefPage(debrief: d, all: _debriefs),
+      ),
+    );
+    await _load();
+  }
 
   Future<void> _import() async {
     final picked = await ref.read(activityFilePickerProvider)();
@@ -40,6 +66,7 @@ class _DebriefsPageState extends ConsumerState<DebriefsPage> {
           ),
         ),
       );
+      await _load();
     } on FormatException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -90,6 +117,29 @@ class _DebriefsPageState extends ConsumerState<DebriefsPage> {
                   minimumSize: const Size.fromHeight(56),
                 ),
               ),
+              if (_debriefs.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                Text(
+                  'Mes débriefs',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                for (final d in _debriefs)
+                  Card(
+                    child: ListTile(
+                      title: Text(d.name),
+                      subtitle: Text(
+                        '${formatDateTime(d.date.toLocal())} · '
+                        '${formatKm(d.distanceM)} · ${d.type.label}',
+                      ),
+                      trailing: Text(
+                        '${d.score}',
+                        style: Theme.of(context).textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      onTap: () => _openSaved(d),
+                    ),
+                  ),
+              ],
             ],
           ),
         ),
