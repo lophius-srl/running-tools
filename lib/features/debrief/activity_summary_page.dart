@@ -10,6 +10,7 @@ import '../common/run_widgets.dart';
 import '../course/course_text.dart';
 import '../home/home_entry.dart';
 import 'analysis_sections.dart';
+import 'debrief_text.dart';
 
 /// Étape 1 du débrief : ce qui a été lu dans la sortie, et son type.
 class ActivitySummaryPage extends StatefulWidget {
@@ -43,6 +44,10 @@ class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
         ? '–'
         : '${formatPace(paceForSpeed(a.averageKmh))}/km';
     final gain = a.profile?.climb().gain.round();
+    final pacing = PacingAnalysis.of(_track, _type);
+    final vma = widget.vmaKmh == null
+        ? null
+        : compareToVma(_track, _type, widget.vmaKmh!);
     Widget row(String label, String value) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -86,34 +91,6 @@ class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
                 ),
                 row('Allure moyenne', pace),
                 if (gain != null) row('Dénivelé positif', '$gain m'),
-                row(
-                  'Pauses retirées',
-                  a.pauses.isEmpty
-                      ? 'aucune'
-                      : '${a.pauses.length} · '
-                            '${formatRaceTime(a.pausedTime.inSeconds.toDouble())}',
-                ),
-                if (a.rejectedFixes > 0)
-                  row('Points GPS écartés', '${a.rejectedFixes}'),
-                const SizedBox(height: 12),
-                Text('Données présentes', style: theme.textTheme.titleMedium),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    stream('Altitude', a.hasElevation),
-                    stream('Fréquence cardiaque', a.hasHeartRate),
-                    stream('Cadence', a.hasCadence),
-                  ],
-                ),
-                if (!a.hasHeartRate || !a.hasCadence)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Les analyses qui en dépendent seront masquées.',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
                 const SizedBox(height: 16),
                 Text('Type de séance', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
@@ -135,14 +112,67 @@ class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
-                PacingTile(pacing: PacingAnalysis.of(_track, _type)),
+                KeyFindingsCard(
+                  findings: keyFindings(
+                    pacing: pacing,
+                    hills: _hills,
+                    vma: vma,
+                    type: _type,
+                  ),
+                  gainable: gainableText(pacing.gainableS),
+                ),
+                Text('Le détail', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 8),
+                PacingTile(pacing: pacing, type: _type),
                 if (a.hasElevation) HillsTile(hills: _hills),
-                VmaTile(
-                  comparison: widget.vmaKmh == null
-                      ? null
-                      : compareToVma(_track, _type, widget.vmaKmh!),
-                  vmaKmh: widget.vmaKmh,
-                  type: _type,
+                VmaTile(comparison: vma, vmaKmh: widget.vmaKmh, type: _type),
+                AnalysisTile(
+                  title: 'Données de la sortie',
+                  summary: a.pauses.isEmpty
+                      ? 'Aucune pause retirée.'
+                      : '${a.pauses.length} pause${a.pauses.length > 1 ? 's' : ''} '
+                            'retirée${a.pauses.length > 1 ? 's' : ''} '
+                            '(${spokenDuration(a.pausedTime.inSeconds.toDouble())}).',
+                  children: [
+                    for (final p in a.pauses)
+                      Text(
+                        'Arrêt au km '
+                        '${(p.atM / 1000).toStringAsFixed(1).replaceAll('.', ',')}'
+                        ' : ${spokenDuration(p.duration.inSeconds.toDouble())}',
+                      ),
+                    if (a.pauses.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 8),
+                        child: Text(
+                          'Seuls les vrais arrêts (immobile plus de 20 s, ou '
+                          'montre en pause) sont retirés ; la marche compte.',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        stream('Altitude', a.hasElevation),
+                        stream('Fréquence cardiaque', a.hasHeartRate),
+                        stream('Cadence', a.hasCadence),
+                      ],
+                    ),
+                    if (!a.hasHeartRate || !a.hasCadence)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Les analyses qui en dépendent seront masquées.',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    if (a.rejectedFixes > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '${a.rejectedFixes} points GPS aberrants écartés.',
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(

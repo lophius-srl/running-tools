@@ -4,8 +4,8 @@ import '../../domain/course_profile.dart';
 import '../../domain/debrief/pacing_analysis.dart';
 import '../../domain/debrief/session_type.dart';
 import '../../domain/training_paces.dart';
-import '../common/decimal_text.dart';
 import '../course/course_text.dart';
+import 'debrief_text.dart';
 
 /// « 5:12 » pour 312 s/km.
 String paceText(double secondsPerKm) =>
@@ -51,53 +51,32 @@ class AnalysisTile extends StatelessWidget {
 
 /// a) Gestion de l'allure.
 class PacingTile extends StatelessWidget {
-  const PacingTile({super.key, required this.pacing});
+  const PacingTile({super.key, required this.pacing, required this.type});
 
   final PacingAnalysis pacing;
+  final SessionType type;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final p = pacing;
-    final delta = p.splitDeltaS;
-    final split = delta.abs() < 10
-        ? 'Moitiés équilibrées (écart ${durationText(delta)}).'
-        : delta > 0
-        ? 'Split positif : 2e moitié ${durationText(delta)} plus lente.'
-        : 'Split négatif : 2e moitié ${durationText(delta)} plus rapide.';
-    final lines = <String>[
-      split,
-      if (p.fastStartPercent case final f? when f > 3)
-        'Départ rapide : 3 premiers km ${f.round()} % plus vite que ta '
-            'moyenne (allure corrigée de la pente).',
-      if (p.irregularity case final cv?)
-        'Régularité : ±${formatDecimal(double.parse((cv * 100).toStringAsFixed(1)))} % '
-            'd’un km à l’autre (allure corrigée)'
-            '${cv > 0.05 ? ', irrégulier' : ''}.',
-      if (p.gainableS case final g?)
-        g < 5
-            ? 'Allure bien répartie : presque rien à gagner.'
-            : 'Temps gagnable estimé : environ ${durationText(g)}, à effort '
-                  'égal, en courant plus régulièrement.',
-    ];
+    final lines = pacingLines(pacing, type);
     return AnalysisTile(
-      title: 'Allure',
+      title: 'Ton allure',
       summary: lines.first,
-      initiallyExpanded: true,
       children: [
         for (final l in lines.skip(1))
           Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(l)),
         const SizedBox(height: 8),
         Table(
-          columnWidths: const {0: FlexColumnWidth(0.6)},
+          columnWidths: const {0: FlexColumnWidth(0.5)},
           children: [
             TableRow(
               children: [
-                for (final h in ['km', 'allure', 'corrigée', 'D±'])
+                for (final h in ['Km', 'Allure', 'Si plat', 'Relief'])
                   Text(h, style: theme.textTheme.labelMedium),
               ],
             ),
-            for (final s in p.splits)
+            for (final s in pacing.splits)
               TableRow(
                 children: [
                   Text(
@@ -108,8 +87,10 @@ class PacingTile extends StatelessWidget {
                   Text(paceText(s.paceS)),
                   Text(paceText(s.gapPaceS)),
                   Text(
-                    '${s.elevationDeltaM >= 0 ? '+' : '−'}'
-                    '${s.elevationDeltaM.abs().round()} m',
+                    s.elevationDeltaM.abs() < 3
+                        ? 'plat'
+                        : '${s.elevationDeltaM > 0 ? '+' : '−'}'
+                              '${s.elevationDeltaM.abs().round()} m',
                   ),
                 ],
               ),
@@ -117,9 +98,9 @@ class PacingTile extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Allure corrigée : ce que vaudrait l’effort sur le plat. Le temps '
-          'gagnable est une estimation : même effort total, réparti '
-          'régulièrement.',
+          '« Si plat » : ton allure si le km avait été plat. Une côte '
+          'ralentit, une descente aide : cette colonne montre ton effort '
+          'réel.',
           style: theme.textTheme.bodySmall,
         ),
       ],
@@ -135,43 +116,24 @@ class HillsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final costly = hills.where((h) => h.section.kind == SectionKind.climb);
-    final summary = hills.isEmpty
-        ? 'Parcours plat : rien à signaler.'
-        : '${costly.length} montée(s), ${hills.length - costly.length} '
-              'descente(s).';
+    final climbs = hills
+        .where((h) => h.section.kind == SectionKind.climb)
+        .length;
+    final descents = hills.length - climbs;
     return AnalysisTile(
-      title: 'Relief',
-      summary: summary,
+      title: 'Les côtes',
+      summary: hills.isEmpty
+          ? 'Parcours plat : rien à signaler.'
+          : '$climbs côte${climbs > 1 ? 's' : ''}, $descents '
+                'descente${descents > 1 ? 's' : ''}.',
       children: [
         for (final h in hills)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Text(_describe(h)),
+            child: Text(hillLine(h)),
           ),
       ],
     );
-  }
-
-  static String _km(double m) =>
-      (m / 1000).toStringAsFixed(1).replaceAll('.', ',');
-
-  static String _describe(HillReport h) {
-    final s = h.section;
-    final where =
-        '${s.kind.label} du km ${_km(s.startM)} au km ${_km(s.endM)} '
-        '(${s.kind == SectionKind.climb ? '+${h.gain.round()}' : '−${h.loss.round()}'} m)';
-    final lost = h.lostS.abs() < 5
-        ? 'à effort régulier'
-        : h.lostS < 0
-        ? '${durationText(h.lostS)} plus vite qu’à effort régulier'
-        : '${durationText(h.lostS)} de plus qu’à effort régulier';
-    final after = switch (h.afterSlowdownS) {
-      final a? when a > 5 => ', puis +${a.round()} s/km sur les 2 km suivants',
-      _ => '',
-    };
-    final hr = h.peakHeartRate == null ? '' : ' · FC max ${h.peakHeartRate}';
-    return '$where : $lost$hr$after.';
   }
 }
 
@@ -189,33 +151,75 @@ class VmaTile extends StatelessWidget {
   final SessionType type;
 
   @override
+  Widget build(BuildContext context) => AnalysisTile(
+    title: 'Ton intensité',
+    summary: vmaLine(comparison, vmaKmh, type),
+    children: const [
+      Text(
+        'Repères : endurance et sortie longue 60 à 75 % de ta VMA ; en '
+        'course, de 95 % sur 10 min à 75 % sur 3 h.',
+      ),
+    ],
+  );
+}
+
+/// L'essentiel en haut du débrief.
+class KeyFindingsCard extends StatelessWidget {
+  const KeyFindingsCard({
+    super.key,
+    required this.findings,
+    required this.gainable,
+  });
+
+  final List<Finding> findings;
+  final String? gainable;
+
+  @override
   Widget build(BuildContext context) {
-    final c = comparison;
-    final String summary;
-    if (vmaKmh == null) {
-      summary = 'Fais un test de VMA pour comparer ta sortie.';
-    } else if (c == null) {
-      summary = 'Pas de comparaison pour le fractionné.';
-    } else {
-      final range = '${c.expected.low.round()}–${c.expected.high.round()} %';
-      summary =
-          '${c.percent.round()} % de ta VMA (${formatDecimal(vmaKmh!)} km/h). '
-          '${switch (c.verdict) {
-            VmaVerdict.inRange => 'Dans la plage habituelle',
-            VmaVerdict.fast => 'Plus vite que la plage habituelle',
-            VmaVerdict.slow => 'Plus lent que la plage habituelle',
-          }} pour ${type == SessionType.race ? 'une course de cette durée' : 'une ${type.label.toLowerCase()}'} ($range).';
-    }
-    return AnalysisTile(
-      title: 'VMA',
-      summary: summary,
-      children: const [
-        Text(
-          'Allure corrigée de la pente, en % de ta VMA du dernier test. '
-          'Endurance et sortie longue : 60–75 % ; en course, de ~95 % sur '
-          '10 min à ~75 % sur 3 h.',
+    final theme = Theme.of(context);
+    return Card(
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'En bref',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final f in findings)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      f.positive ? Icons.check_circle : Icons.lightbulb,
+                      size: 20,
+                      color: f.positive
+                          ? const Color(0xFF15803D)
+                          : theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(f.text)),
+                  ],
+                ),
+              ),
+            if (gainable case final g?)
+              Text(
+                g,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

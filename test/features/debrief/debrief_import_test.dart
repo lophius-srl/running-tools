@@ -45,7 +45,6 @@ void main() {
     ));
     expect(find.text('Footing du dimanche'), findsOneWidget);
     expect(find.text('4,99 km'), findsOneWidget);
-    expect(find.textContaining('1 ·'), findsOneWidget);
     expect(
       find.text('Détecté : Endurance. Corrige si besoin.'),
       findsOneWidget,
@@ -56,6 +55,12 @@ void main() {
       find.widgetWithText(ChoiceChip, 'Sortie longue'),
     );
     expect(chip.selected, isTrue);
+    await tester.scrollUntilVisible(
+      find.text('Données de la sortie'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('1 pause retirée'), findsOneWidget);
   });
 
   testWidgets('FIT sans FC : analyses cardio annoncées masquées', (
@@ -66,6 +71,13 @@ void main() {
       bytes: toFit(easyRun(km: 2, withHeartRate: false)),
     ));
     expect(find.text('garmin'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Données de la sortie'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Données de la sortie'));
+    await tester.pumpAndSettle();
     expect(
       find.text('Les analyses qui en dépendent seront masquées.'),
       findsOneWidget,
@@ -103,26 +115,19 @@ void main() {
       name: 'sortie.gpx',
       bytes: Uint8List.fromList(utf8.encode(gpx)),
     ), history: history);
-    await tester.scrollUntilVisible(
-      find.text('Allure'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.textContaining('Split positif'), findsOneWidget);
-    expect(find.textContaining('Départ rapide'), findsOneWidget);
-    expect(
-      find.textContaining('Temps gagnable estimé : environ'),
-      findsOneWidget,
-    );
+    // En bref, en haut : les constats les plus importants.
+    expect(find.text('En bref'), findsOneWidget);
+    expect(find.textContaining('Tu es parti trop vite'), findsOneWidget);
+    expect(find.textContaining('tu aurais pu gagner environ'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('Relief'),
+      find.text('Les côtes'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Relief'));
+    await tester.tap(find.text('Les côtes'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('FC max 178'), findsOneWidget);
+    expect(find.textContaining('FC max 178'), findsWidgets);
     await tester.scrollUntilVisible(
       find.textContaining('de ta VMA (16 km/h)'),
       200,
@@ -138,7 +143,7 @@ void main() {
       bytes: Uint8List.fromList(utf8.encode(gpx)),
     ));
     await tester.scrollUntilVisible(
-      find.text('VMA'),
+      find.text('Ton intensité'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
