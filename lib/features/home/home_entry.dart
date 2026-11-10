@@ -34,6 +34,10 @@ enum HomeEntry {
     Color(0xFF0EA5E9),
     Color(0xFF1E63E9),
   ]),
+  gps('Suivi GPS', 'Distance et allure en direct', Icons.gps_fixed, [
+    Color(0xFF0F766E),
+    Color(0xFF1E63E9),
+  ]),
   orthostatic('Test orthostatique', 'Ma forme au réveil', Icons.favorite, [
     Color(0xFFDB2777),
     Color(0xFF1E63E9),
@@ -84,7 +88,7 @@ enum HomeEntry {
     club,
     lanes,
   ];
-  static const tools = [history, orthostatic, checklists, setup];
+  static const tools = [history, orthostatic, gps, checklists, setup];
 
   /// Entrée de l'accueil d'un test par paliers (pour reprendre ses couleurs).
   static HomeEntry ofStagedTest(StagedTest test) => switch (test) {
