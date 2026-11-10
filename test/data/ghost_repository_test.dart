@@ -49,4 +49,21 @@ void main() {
     expect(runs.map((r) => r.date.day), [2, 1]);
     expect(runs.first.curve.last, (200.0, 2.5));
   });
+
+  test('sorties d’amis : prénom gardé, liste d’amis sans doublon', () async {
+    Ghost g(String name) => Ghost(
+      name: name,
+      points: const [
+        GhostPoint(timeS: 0, distanceM: 0),
+        GhostPoint(timeS: 60, distanceM: 200),
+      ],
+    );
+    await repo.save(g('Seuil'), friend: 'Tom');
+    await repo.save(g('Sortie longue'), friend: 'alice');
+    await repo.save(g('Footing'), friend: 'Tom');
+    await repo.save(g('Ma sortie'));
+    final saved = await repo.saved();
+    expect(saved.where((s) => s.friend == 'Tom'), hasLength(2));
+    expect(friendNames(saved), ['alice', 'Tom']);
+  });
 }

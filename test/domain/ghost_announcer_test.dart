@@ -72,4 +72,35 @@ void main() {
     expect(c.points.map((p) => p.$1), [100, 200, 300]);
     expect(c.points.first.$2, closeTo(1.05, 1e-9));
   });
+
+  group('duo : annonces au nom de l’ami', () {
+    test('écart en mètres', () {
+      expect(
+        describeGap(gap(-12, -50), rival: 'Tom'),
+        'Tom est 50 mètres devant.',
+      );
+      expect(
+        describeGap(gap(8, 31), rival: 'Tom'),
+        'Tu es 31 mètres devant Tom.',
+      );
+      expect(describeGap(gap(0.4, 2), rival: 'Tom'), 'Tu es à hauteur de Tom.');
+    });
+
+    test('changements de leader et annonce au km', () {
+      final a = GhostAnnouncer(rival: 'Tom');
+      a.update(timeS: 60, distanceM: 200, gap: gap(-4, -12));
+      expect(
+        a.update(timeS: 120, distanceM: 400, gap: gap(4, 12)),
+        'Tu passes devant Tom !',
+      );
+      expect(
+        a.update(timeS: 200, distanceM: 700, gap: gap(-5, -15)),
+        'Tom repasse devant, 15 mètres.',
+      );
+      expect(
+        a.update(timeS: 300, distanceM: 1000, gap: gap(-14, -50)),
+        '1 kilomètre. Tom est 50 mètres devant.',
+      );
+    });
+  });
 }

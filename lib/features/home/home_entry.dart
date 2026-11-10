@@ -40,6 +40,10 @@ enum HomeEntry {
     Icons.person_outline,
     [Color(0xFF6D28D9), Color(0xFF1E63E9)],
   ),
+  duo('Duo', 'En direct contre la sortie d’un ami', Icons.people, [
+    Color(0xFFC026D3),
+    Color(0xFF1E63E9),
+  ]),
   gps('Suivi GPS', 'Distance et allure en direct', Icons.gps_fixed, [
     Color(0xFF0F766E),
     Color(0xFF1E63E9),
@@ -90,6 +94,7 @@ enum HomeEntry {
     fartlek,
     deck,
     ghost,
+    duo,
     metronome,
     multiTimer,
     club,

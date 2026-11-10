@@ -18,19 +18,28 @@ class GhostResultPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ahead = summary.gapS >= 0;
+    final rival = summary.rival;
     final km = (summary.distanceM / 1000)
         .toStringAsFixed(2)
         .replaceAll('.', ',');
     return Scaffold(
       body: Column(
         children: [
-          RunHeader(entry: HomeEntry.ghost, trailing: summary.ghostName),
+          RunHeader(
+            entry: rival == null ? HomeEntry.ghost : HomeEntry.duo,
+            trailing: rival ?? summary.ghostName,
+          ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
                 Text(
-                  ahead ? 'Fantôme battu !' : 'Le fantôme gagne',
+                  switch ((ahead, rival)) {
+                    (true, null) => 'Fantôme battu !',
+                    (false, null) => 'Le fantôme gagne',
+                    (true, final name?) => 'Tu bats $name !',
+                    (false, final name?) => '$name gagne',
+                  },
                   textAlign: TextAlign.center,
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w800,
@@ -44,7 +53,7 @@ class GhostResultPage extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '$km km en ${formatClock(summary.timeS)} · fantôme en '
+                  '$km km en ${formatClock(summary.timeS)} · ${rival ?? 'fantôme'} en '
                   '${formatClock(summary.timeS + summary.gapS)}',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.titleMedium,

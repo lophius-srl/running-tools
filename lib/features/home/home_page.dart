@@ -76,6 +76,8 @@ class HomePage extends StatelessWidget {
         page = const ChecklistsPage();
       case HomeEntry.ghost:
         page = const GhostPage();
+      case HomeEntry.duo:
+        page = const GhostPage(duo: true);
       case HomeEntry.gps:
         page = const GpsCheckPage();
       case HomeEntry.orthostatic:
