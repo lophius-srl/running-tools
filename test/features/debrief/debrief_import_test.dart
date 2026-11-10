@@ -11,11 +11,25 @@ import 'package:running_tools/features/debrief/debriefs_page.dart';
 import '../../fixtures/activities.dart';
 import '../../support/fakes.dart';
 
+/// Fait défiler jusqu'à la section [title], puis l'ouvre.
+Future<void> openTile(WidgetTester tester, String title) async {
+  await tester.scrollUntilVisible(
+    find.text(title),
+    200,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.ensureVisible(find.text(title));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(title));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   Future<void> pumpPage(
     WidgetTester tester,
     ({String name, Uint8List bytes}) file, {
     FakeHistoryRepository? history,
+    FakePreferencesRepository? preferences,
   }) async {
     tester.view
       ..physicalSize = const Size(1179, 2556)
@@ -24,7 +38,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          ...fakeOverrides(history: history),
+          ...fakeOverrides(history: history, preferences: preferences),
           activityFilePickerProvider.overrideWithValue(() async => file),
         ],
         child: const MaterialApp(home: DebriefsPage()),
@@ -71,13 +85,12 @@ void main() {
       bytes: toFit(easyRun(km: 2, withHeartRate: false)),
     ));
     expect(find.text('garmin'), findsOneWidget);
+    await openTile(tester, 'Données de la sortie');
     await tester.scrollUntilVisible(
-      find.text('Données de la sortie'),
-      200,
+      find.text('Les analyses qui en dépendent seront masquées.'),
+      100,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Données de la sortie'));
-    await tester.pumpAndSettle();
     expect(
       find.text('Les analyses qui en dépendent seront masquées.'),
       findsOneWidget,
@@ -120,13 +133,12 @@ void main() {
     expect(find.textContaining('Tu es parti trop vite'), findsOneWidget);
     expect(find.textContaining('tu aurais pu gagner environ'), findsOneWidget);
 
+    await openTile(tester, 'Les côtes');
     await tester.scrollUntilVisible(
-      find.text('Les côtes'),
-      200,
+      find.textContaining('FC max 178'),
+      100,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Les côtes'));
-    await tester.pumpAndSettle();
     expect(find.textContaining('FC max 178'), findsWidgets);
     await tester.scrollUntilVisible(
       find.textContaining('de ta VMA (16 km/h)'),
@@ -151,5 +163,53 @@ void main() {
       find.text('Fais un test de VMA pour comparer ta sortie.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('cardio : dérive, cadence, FC max retenue', (tester) async {
+    final prefs = FakePreferencesRepository();
+    final gpx = toGpx(
+      scriptedRun(
+        km: 11,
+        kmhAt: (_) => 11,
+        hrAt: (d, s) => 145 + (s > 600 ? (s - 600) ~/ 150 : 0) + s % 3,
+        cadAt: (d, s) => s > 2900 ? 81 : 85,
+      ),
+    );
+    await pumpPage(tester, (
+      name: 'heure.gpx',
+      bytes: Uint8List.fromList(utf8.encode(gpx)),
+    ), preferences: prefs);
+    expect(find.textContaining('Ton cœur a dérivé'), findsOneWidget);
+    expect(prefs.maxHr, inInclusiveRange(165, 175));
+    await tester.scrollUntilVisible(
+      find.text('Ta foulée'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('elle a baissé de'), findsOneWidget);
+  });
+
+  testWidgets('FC peu fiable : réserve affichée, FC max non retenue', (
+    tester,
+  ) async {
+    final prefs = FakePreferencesRepository();
+    final gpx = toGpx(
+      scriptedRun(
+        km: 11,
+        kmhAt: (_) => 11,
+        hrAt: (d, s) => s % 40 < 20 ? 140 : 182,
+        cadAt: (d, s) => 85,
+      ),
+    );
+    await pumpPage(tester, (
+      name: 'optique.gpx',
+      bytes: Uint8List.fromList(utf8.encode(gpx)),
+    ), preferences: prefs);
+    expect(
+      find.text('FC peu fiable sur cette sortie : pas de conclusion cardio.'),
+      findsWidgets,
+    );
+    expect(find.textContaining('Ton cœur a dérivé'), findsNothing);
+    expect(prefs.maxHr, isNull);
   });
 }
