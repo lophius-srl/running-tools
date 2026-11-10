@@ -5,12 +5,14 @@ import 'dart:async';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:running_tools/audio/beep_player.dart';
 import 'package:running_tools/audio/cadence_coach.dart';
+import 'package:running_tools/audio/live_voice.dart';
 import 'package:running_tools/audio/providers.dart';
 import 'package:running_tools/audio/audio_program.dart';
 import 'package:running_tools/audio/track_service.dart';
 import 'package:running_tools/data/checklist_repository.dart';
 import 'package:running_tools/data/deck_repository.dart';
 import 'package:running_tools/data/fartlek_repository.dart';
+import 'package:running_tools/data/ghost_repository.dart';
 import 'package:running_tools/data/history_repository.dart';
 import 'package:running_tools/data/orthostatic_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
@@ -29,6 +31,7 @@ import 'package:running_tools/device/share_service.dart';
 import 'package:running_tools/domain/cadence_advice.dart';
 import 'package:running_tools/domain/checklist.dart';
 import 'package:running_tools/domain/deck.dart';
+import 'package:running_tools/domain/ghost.dart';
 import 'package:running_tools/domain/gps_tracker.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
 import 'package:running_tools/domain/orthostatic.dart';
@@ -441,6 +444,52 @@ class FakeLocationSource implements LocationSource {
       (_fixes = StreamController<GpsFix>(sync: true)).stream;
 }
 
+class FakeLiveVoice implements LiveVoice {
+  final said = <String>[];
+
+  @override
+  Future<void> say(String text) async => said.add(text);
+
+  @override
+  Future<void> dispose() async {}
+}
+
+class FakeGhostRepository implements GhostRepository {
+  final summaries = <GhostRunSummary>[];
+  final ghosts = <String, Ghost>{};
+  var _next = 0;
+
+  @override
+  Future<List<GhostRunSummary>> runs() async => summaries.reversed.toList();
+
+  @override
+  Future<void> addRun(GhostRunSummary run) async => summaries.add(run);
+
+  @override
+  Future<List<SavedGhost>> saved() async => [
+    for (final MapEntry(:key, :value) in ghosts.entries)
+      SavedGhost(
+        id: key,
+        name: value.name,
+        distanceM: value.totalDistanceM!,
+        timeS: value.totalTimeS!,
+      ),
+  ];
+
+  @override
+  Future<SavedGhost> save(Ghost ghost) async {
+    final id = 'g${_next++}';
+    ghosts[id] = ghost;
+    return (await saved()).firstWhere((g) => g.id == id);
+  }
+
+  @override
+  Future<Ghost?> load(String id) async => ghosts[id];
+
+  @override
+  Future<void> delete(String id) async => ghosts.remove(id);
+}
+
 /// Remplace tous les services natifs par des faux.
 List<Override> fakeOverrides({
   FakeSetupRepository? setups,
@@ -464,7 +513,13 @@ List<Override> fakeOverrides({
   FakeHeartRateMonitor? heartRate,
   FakeHeartRateHistory? healthHeartRate,
   FakeLocationSource? location,
+  FakeLiveVoice? voice,
+  FakeGhostRepository? ghosts,
 }) => [
+  liveVoiceFactoryProvider.overrideWithValue(() => voice ?? FakeLiveVoice()),
+  ghostRepositoryProvider.overrideWith(
+    (ref) async => ghosts ?? FakeGhostRepository(),
+  ),
   locationSourceProvider.overrideWithValue(location ?? FakeLocationSource()),
   heartRateHistoryProvider.overrideWithValue(
     healthHeartRate ?? FakeHeartRateHistory(),

@@ -34,6 +34,12 @@ enum HomeEntry {
     Color(0xFF0EA5E9),
     Color(0xFF1E63E9),
   ]),
+  ghost(
+    'Fantôme',
+    'Course contre une sortie de référence',
+    Icons.person_outline,
+    [Color(0xFF6D28D9), Color(0xFF1E63E9)],
+  ),
   gps('Suivi GPS', 'Distance et allure en direct', Icons.gps_fixed, [
     Color(0xFF0F766E),
     Color(0xFF1E63E9),
@@ -83,6 +89,7 @@ enum HomeEntry {
     workouts,
     fartlek,
     deck,
+    ghost,
     metronome,
     multiTimer,
     club,

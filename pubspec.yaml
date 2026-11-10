@@ -52,6 +52,7 @@ dependencies:
   health: ^13.3.2
   geolocator: ^14.0.1
   xml: ^7.1.0
+  file_picker: ^13.3.2
 
 dev_dependencies:
   flutter_test:
