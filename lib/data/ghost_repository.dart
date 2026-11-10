@@ -14,6 +14,7 @@ class GhostRunSummary {
     required this.timeS,
     required this.gapS,
     required this.curve,
+    this.rival,
   });
 
   final DateTime date;
@@ -28,6 +29,9 @@ class GhostRunSummary {
   /// Écart (s) tous les 100 m.
   final List<(double distanceM, double gapS)> curve;
 
+  /// Prénom de l'ami en duo, sinon `null` (fantôme).
+  final String? rival;
+
   Map<String, Object?> toJson() => {
     'date': date.toIso8601String(),
     'ghost': ghostName,
@@ -38,6 +42,7 @@ class GhostRunSummary {
     'curve': [
       for (final (d, g) in curve) [d, g],
     ],
+    if (rival != null) 'rival': rival,
   };
 
   static GhostRunSummary? fromJson(Map<String, Object?> json) {
@@ -49,6 +54,7 @@ class GhostRunSummary {
         distanceM: (json['distanceM']! as num).toDouble(),
         timeS: (json['timeS']! as num).toDouble(),
         gapS: (json['gapS']! as num).toDouble(),
+        rival: json['rival'] as String?,
         curve: [
           for (final p in json['curve']! as List)
             (((p as List)[0] as num).toDouble(), (p[1] as num).toDouble()),
@@ -67,13 +73,22 @@ class SavedGhost {
     required this.name,
     required this.distanceM,
     required this.timeS,
+    this.friend,
   });
 
   final String id;
   final String name;
   final double distanceM;
   final double timeS;
+
+  /// Prénom de l'ami à qui appartient la sortie (duo), sinon `null`.
+  final String? friend;
 }
+
+/// Prénoms des amis, sans doublon, par ordre alphabétique.
+List<String> friendNames(Iterable<SavedGhost> ghosts) =>
+    ({for (final g in ghosts) ?g.friend}.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase())));
 
 abstract interface class GhostRepository {
   /// Courses passées, la plus récente en premier.
@@ -81,7 +96,7 @@ abstract interface class GhostRepository {
   Future<void> addRun(GhostRunSummary run);
 
   Future<List<SavedGhost>> saved();
-  Future<SavedGhost> save(Ghost ghost);
+  Future<SavedGhost> save(Ghost ghost, {String? friend});
   Future<Ghost?> load(String id);
   Future<void> delete(String id);
 }
@@ -134,17 +149,19 @@ class JsonGhostRepository implements GhostRepository {
             name: name,
             distanceM: distanceM.toDouble(),
             timeS: timeS.toDouble(),
+            friend: g['friend'] as String?,
           ),
     ];
   }
 
   @override
-  Future<SavedGhost> save(Ghost ghost) async {
+  Future<SavedGhost> save(Ghost ghost, {String? friend}) async {
     final entry = SavedGhost(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       name: ghost.name,
       distanceM: ghost.totalDistanceM!,
       timeS: ghost.totalTimeS!,
+      friend: friend,
     );
     await _ghostFile(entry.id).write({
       'version': 1,
@@ -202,6 +219,7 @@ class JsonGhostRepository implements GhostRepository {
           'name': g.name,
           'distanceM': g.distanceM,
           'timeS': g.timeS,
+          if (g.friend != null) 'friend': g.friend,
         },
     ],
   });

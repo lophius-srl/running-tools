@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:running_tools/domain/ghost.dart';
 import 'package:running_tools/domain/gps_tracker.dart';
+import 'package:running_tools/domain/gpx.dart';
 import 'package:running_tools/features/ghost/ghost_page.dart';
 
 import '../../support/fakes.dart';
@@ -35,7 +36,11 @@ void main() {
     clock = FakeRaceClock();
   });
 
-  Future<void> pumpPage(WidgetTester tester, {GpxPicker? picker}) async {
+  Future<void> pumpPage(
+    WidgetTester tester, {
+    GpxPicker? picker,
+    bool duo = false,
+  }) async {
     tester.view
       ..physicalSize = const Size(1179, 2556)
       ..devicePixelRatio = 3;
@@ -51,7 +56,7 @@ void main() {
           ),
           if (picker != null) gpxPickerProvider.overrideWithValue(picker),
         ],
-        child: const MaterialApp(home: GhostPage()),
+        child: MaterialApp(home: GhostPage(duo: duo)),
       ),
     );
     await tester.pumpAndSettle();
@@ -143,5 +148,62 @@ void main() {
     expect(formatGap(12.4), '+12 s');
     expect(formatGap(-65), '−1:05');
     expect(formatGap(0.2), '0 s');
+  });
+
+  testWidgets('duo : sortie d’un ami, annonces et bilan à son nom', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      duo: true,
+      picker: () async => (name: 'parc', content: gpxOf(400)),
+    );
+    expect(find.text('Fantôme à allure constante'), findsNothing);
+    expect(find.textContaining('Exporter le GPX'), findsOneWidget);
+
+    await tester.tap(find.text('Ajouter la sortie d’un ami (GPX)'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('friend-name')), 'Tom');
+    await tester.pump();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tom · Boucle du parc'), findsOneWidget);
+    expect(ghosts.friends.values.single, 'Tom');
+
+    await tester.scrollUntilVisible(
+      find.text('Courir contre Tom'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Courir contre Tom'));
+    await tester.pumpAndSettle();
+    location.emit(fix(0, 0));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Partir'));
+    await tester.pump();
+    expect(voice.said.single, 'Partez ! Tom est parti avec toi.');
+
+    // Tom court à 3 m/s ; moi à 2,5 m/s : il est devant.
+    for (var s = 1; s <= 120; s++) {
+      clock.elapsed = Duration(seconds: s);
+      location.emit(fix(s, s * 2.5));
+    }
+    await tester.pump();
+    expect(find.textContaining('derrière Tom'), findsOneWidget);
+
+    await tester.tap(find.text('Terminer'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Terminer'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tom gagne'), findsOneWidget);
+    expect(ghosts.summaries.single.rival, 'Tom');
+  });
+
+  testWidgets('les sorties d’amis ne se mélangent pas aux fantômes', (
+    tester,
+  ) async {
+    await ghosts.save(parseGpxGhost(gpxOf(60)), friend: 'Tom');
+    await pumpPage(tester);
+    expect(find.textContaining('Tom'), findsNothing);
   });
 }

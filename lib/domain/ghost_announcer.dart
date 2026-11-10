@@ -16,10 +16,14 @@ class GhostAnnouncer {
   GhostAnnouncer({
     this.every = GhostAnnounceEvery.kilometer,
     this.leadThresholdM = 10,
+    this.rival,
   });
 
   final GhostAnnounceEvery every;
   final double leadThresholdM;
+
+  /// Prénom de l'ami (duo) ; `null` pour le fantôme.
+  final String? rival;
 
   bool? _meAhead;
   var _lastMark = 0;
@@ -41,7 +45,7 @@ class GhostAnnouncer {
       final at = every == GhostAnnounceEvery.kilometer
           ? (mark == 1 ? '1 kilomètre' : '$mark kilomètres')
           : '${mark * 2} minutes';
-      phrases.add('$at. ${describeGap(gap)}');
+      phrases.add('$at. ${describeGap(gap, rival: rival)}');
     }
     return phrases.isEmpty ? null : phrases.join(' ');
   }
@@ -52,14 +56,19 @@ class GhostAnnouncer {
     final previous = _meAhead;
     _meAhead = meAhead;
     if (previous == null || previous == meAhead) return null;
-    return meAhead
-        ? 'Tu dépasses ton fantôme !'
-        : 'Le fantôme repasse devant, ${gap.meters.abs().round()} mètres.';
+    final meters = gap.meters.abs().round();
+    return switch ((meAhead, rival)) {
+      (true, null) => 'Tu dépasses ton fantôme !',
+      (false, null) => 'Le fantôme repasse devant, $meters mètres.',
+      (true, final name?) => 'Tu passes devant $name !',
+      (false, final name?) => '$name repasse devant, $meters mètres.',
+    };
   }
 }
 
-/// « Tu as 12 secondes d'avance. »
-String describeGap(GhostGap gap) {
+/// « Tu as 12 secondes d'avance. » ; en duo : « Tom est 50 mètres devant. »
+String describeGap(GhostGap gap, {String? rival}) {
+  if (rival != null) return _describeRivalGap(gap, rival);
   final s = gap.seconds.round().abs();
   if (s == 0) return 'Tu es à hauteur du fantôme.';
   final unit = s == 1 ? 'seconde' : 'secondes';
@@ -87,4 +96,13 @@ class GapCurve {
     final next = (_points.length + 1) * stepM;
     if (distanceM >= next) _points.add((next, gap.seconds));
   }
+}
+
+String _describeRivalGap(GhostGap gap, String rival) {
+  final m = gap.meters.round().abs();
+  if (m < 3) return 'Tu es à hauteur de $rival.';
+  final metres = m == 1 ? 'mètre' : 'mètres';
+  return gap.meters > 0
+      ? 'Tu es $m $metres devant $rival.'
+      : '$rival est $m $metres devant.';
 }

@@ -457,6 +457,7 @@ class FakeLiveVoice implements LiveVoice {
 class FakeGhostRepository implements GhostRepository {
   final summaries = <GhostRunSummary>[];
   final ghosts = <String, Ghost>{};
+  final friends = <String, String>{};
   var _next = 0;
 
   @override
@@ -473,13 +474,15 @@ class FakeGhostRepository implements GhostRepository {
         name: value.name,
         distanceM: value.totalDistanceM!,
         timeS: value.totalTimeS!,
+        friend: friends[key],
       ),
   ];
 
   @override
-  Future<SavedGhost> save(Ghost ghost) async {
+  Future<SavedGhost> save(Ghost ghost, {String? friend}) async {
     final id = 'g${_next++}';
     ghosts[id] = ghost;
+    if (friend != null) friends[id] = friend;
     return (await saved()).firstWhere((g) => g.id == id);
   }
 
@@ -487,7 +490,10 @@ class FakeGhostRepository implements GhostRepository {
   Future<Ghost?> load(String id) async => ghosts[id];
 
   @override
-  Future<void> delete(String id) async => ghosts.remove(id);
+  Future<void> delete(String id) async {
+    ghosts.remove(id);
+    friends.remove(id);
+  }
 }
 
 /// Remplace tous les services natifs par des faux.

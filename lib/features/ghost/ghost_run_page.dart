@@ -24,11 +24,15 @@ class GhostRunPage extends ConsumerStatefulWidget {
     required this.ghost,
     required this.alignment,
     required this.every,
+    this.rival,
   });
 
   final Ghost ghost;
   final GhostAlignment alignment;
   final GhostAnnounceEvery every;
+
+  /// Prénom de l'ami en duo ; `null` contre le fantôme.
+  final String? rival;
 
   @override
   ConsumerState<GhostRunPage> createState() => _GhostRunPageState();
@@ -36,7 +40,10 @@ class GhostRunPage extends ConsumerStatefulWidget {
 
 class _GhostRunPageState extends ConsumerState<GhostRunPage> {
   late final LiveVoice _voice = ref.read(liveVoiceFactoryProvider)();
-  late final _announcer = GhostAnnouncer(every: widget.every);
+  late final _announcer = GhostAnnouncer(
+    every: widget.every,
+    rival: widget.rival,
+  );
   late final RouteMatcher? _matcher = widget.alignment == GhostAlignment.route
       ? RouteMatcher(widget.ghost)
       : null;
@@ -58,6 +65,9 @@ class _GhostRunPageState extends ConsumerState<GhostRunPage> {
   var _finished = false;
 
   bool get _started => _startedAt != null;
+
+  /// « le fantôme » ou « Tom ».
+  String get _who => widget.rival ?? 'le fantôme';
 
   @override
   void initState() {
@@ -87,7 +97,11 @@ class _GhostRunPageState extends ConsumerState<GhostRunPage> {
     });
     _clock.start();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _update());
-    _voice.say('Partez ! ${widget.ghost.name} est parti avec toi.');
+    _voice.say(
+      widget.rival == null
+          ? 'Partez ! ${widget.ghost.name} est parti avec toi.'
+          : 'Partez ! ${widget.rival} est parti avec toi.',
+    );
   }
 
   void _onFix(GpsFix fix) {
@@ -139,6 +153,7 @@ class _GhostRunPageState extends ConsumerState<GhostRunPage> {
       timeS: _elapsedS,
       gapS: gap.seconds,
       curve: _curve.points,
+      rival: widget.rival,
     );
     final repo = await ref.read(ghostRepositoryProvider.future);
     await repo.addRun(summary);
@@ -187,7 +202,10 @@ class _GhostRunPageState extends ConsumerState<GhostRunPage> {
     return Scaffold(
       body: Column(
         children: [
-          RunHeader(entry: HomeEntry.ghost, trailing: widget.ghost.name),
+          RunHeader(
+            entry: widget.rival == null ? HomeEntry.ghost : HomeEntry.duo,
+            trailing: widget.rival ?? widget.ghost.name,
+          ),
           Expanded(
             child: _error != null
                 ? RunMessage(icon: Icons.location_off, text: _error!)
@@ -198,14 +216,14 @@ class _GhostRunPageState extends ConsumerState<GhostRunPage> {
                         child: Chip(
                           avatar: Icon(Icons.gps_fixed, color: signalColor),
                           label: Text(
-                            _offRoute ? 'Hors du parcours du fantôme' : signal,
+                            _offRoute ? 'Hors du parcours de $_who' : signal,
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
                       if (!_started)
-                        const Text(
-                          'Attends un bon signal GPS, puis pars : le fantôme '
+                        Text(
+                          'Attends un bon signal GPS, puis pars : $_who '
                           'part avec toi. Les annonces passent par-dessus ta '
                           'musique.',
                           textAlign: TextAlign.center,
@@ -219,10 +237,10 @@ class _GhostRunPageState extends ConsumerState<GhostRunPage> {
                         ),
                         Text(
                           gap == null
-                              ? 'À hauteur du fantôme'
+                              ? 'À hauteur de $_who'
                               : gap.ahead
-                              ? 'devant le fantôme · ${gap.meters.round()} m'
-                              : 'derrière le fantôme · '
+                              ? 'devant $_who · ${gap.meters.round()} m'
+                              : 'derrière $_who · '
                                     '${gap.meters.abs().round()} m',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.titleLarge,
