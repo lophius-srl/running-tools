@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'gps_tracker.dart';
+import 'training_paces.dart';
 
 /// Un instant de la sortie de référence.
 class GhostPoint {
@@ -46,7 +47,7 @@ class Ghost {
 
   /// Fantôme virtuel à allure constante, sans fin (ou jusqu'à [distanceKm]).
   Ghost.constantPace(Duration pacePerKm, {this.distanceKm})
-    : name = 'Allure ${_formatPace(pacePerKm)}/km',
+    : name = 'Allure ${formatPace(pacePerKm)}/km',
       points = const [],
       _pace = pacePerKm.inMilliseconds / 1000 / 1000;
 
@@ -119,11 +120,6 @@ class Ghost {
     }
     return lo;
   }
-}
-
-String _formatPace(Duration pace) {
-  final s = pace.inSeconds;
-  return "${s ~/ 60}'${(s % 60).toString().padLeft(2, '0')}";
 }
 
 /// Écart avec le fantôme à un instant.

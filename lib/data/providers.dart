@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'checklist_repository.dart';
 import 'deck_repository.dart';
 import 'fartlek_repository.dart';
+import 'ghost_repository.dart';
 import 'history_repository.dart';
 import 'orthostatic_repository.dart';
 import 'preferences_repository.dart';
@@ -60,4 +61,8 @@ final deckRepositoryProvider = FutureProvider<DeckRepository>(
 final orthostaticRepositoryProvider = FutureProvider<OrthostaticRepository>(
   (ref) async =>
       JsonOrthostaticRepository(await getApplicationDocumentsDirectory()),
+);
+
+final ghostRepositoryProvider = FutureProvider<GhostRepository>(
+  (ref) async => JsonGhostRepository(await getApplicationDocumentsDirectory()),
 );

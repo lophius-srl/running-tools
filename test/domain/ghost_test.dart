@@ -91,7 +91,7 @@ void main() {
     final virtual = Ghost.constantPace(const Duration(minutes: 5));
 
     test('allure constante, sans fin', () {
-      expect(virtual.name, "Allure 5'00/km");
+      expect(virtual.name, 'Allure 5:00/km');
       expect(virtual.timeAtDistance(10000), closeTo(3000, 1e-9));
       expect(virtual.distanceAtTime(60), closeTo(200, 1e-9));
       expect(virtual.totalDistanceM, isNull);
