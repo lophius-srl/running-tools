@@ -1,7 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,28 +7,12 @@ import '../../domain/ghost.dart';
 import '../../domain/ghost_announcer.dart';
 import '../../domain/gpx.dart';
 import '../common/date_text.dart';
+import '../common/gpx_picker.dart';
 import '../common/decimal_text.dart';
 import '../common/duration_text.dart';
 import '../common/run_widgets.dart';
 import '../home/home_entry.dart';
 import 'ghost_run_page.dart';
-
-/// Lit le contenu d'un GPX choisi par l'utilisateur ; `null` si annulé.
-typedef GpxPicker = Future<({String name, String content})?> Function();
-
-Future<({String name, String content})?> pickGpxFile() async {
-  final files = await FilePicker.pickFiles();
-  final path = files.singleOrNull?.path;
-  if (path == null) return null;
-  final file = files.single;
-  final bytes = await File(path).readAsBytes();
-  return (
-    name: file.name.replaceAll(RegExp(r'\.gpx$'), ''),
-    content: utf8.decode(bytes, allowMalformed: true),
-  );
-}
-
-final gpxPickerProvider = Provider<GpxPicker>((ref) => pickGpxFile);
 
 /// « 10,2 km · 52:10 ».
 String describeSavedGhost(SavedGhost g) =>

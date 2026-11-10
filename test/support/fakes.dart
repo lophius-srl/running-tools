@@ -10,6 +10,7 @@ import 'package:running_tools/audio/providers.dart';
 import 'package:running_tools/audio/audio_program.dart';
 import 'package:running_tools/audio/track_service.dart';
 import 'package:running_tools/data/checklist_repository.dart';
+import 'package:running_tools/data/course_repository.dart';
 import 'package:running_tools/data/deck_repository.dart';
 import 'package:running_tools/data/fartlek_repository.dart';
 import 'package:running_tools/data/ghost_repository.dart';
@@ -496,6 +497,27 @@ class FakeGhostRepository implements GhostRepository {
   }
 }
 
+class FakeCourseRepository implements CourseRepository {
+  final courses = <SavedCourse>[];
+
+  @override
+  Future<List<SavedCourse>> all() async => [...courses];
+
+  @override
+  Future<void> save(SavedCourse course) async {
+    final i = courses.indexWhere((c) => c.id == course.id);
+    if (i < 0) {
+      courses.insert(0, course);
+    } else {
+      courses[i] = course;
+    }
+  }
+
+  @override
+  Future<void> delete(String id) async =>
+      courses.removeWhere((c) => c.id == id);
+}
+
 /// Remplace tous les services natifs par des faux.
 List<Override> fakeOverrides({
   FakeSetupRepository? setups,
@@ -521,7 +543,11 @@ List<Override> fakeOverrides({
   FakeLocationSource? location,
   FakeLiveVoice? voice,
   FakeGhostRepository? ghosts,
+  FakeCourseRepository? courses,
 }) => [
+  courseRepositoryProvider.overrideWith(
+    (ref) async => courses ?? FakeCourseRepository(),
+  ),
   liveVoiceFactoryProvider.overrideWithValue(() => voice ?? FakeLiveVoice()),
   ghostRepositoryProvider.overrideWith(
     (ref) async => ghosts ?? FakeGhostRepository(),
