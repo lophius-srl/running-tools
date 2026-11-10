@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../data/providers.dart';
+import '../../domain/debrief/cardio_analysis.dart';
 
 import '../../domain/debrief/clean_activity.dart';
 import '../../domain/debrief/effort_track.dart';
@@ -13,7 +17,7 @@ import 'analysis_sections.dart';
 import 'debrief_text.dart';
 
 /// Étape 1 du débrief : ce qui a été lu dans la sortie, et son type.
-class ActivitySummaryPage extends StatefulWidget {
+class ActivitySummaryPage extends ConsumerStatefulWidget {
   const ActivitySummaryPage({
     super.key,
     required this.activity,
@@ -28,13 +32,74 @@ class ActivitySummaryPage extends StatefulWidget {
   final double? vmaKmh;
 
   @override
-  State<ActivitySummaryPage> createState() => _ActivitySummaryPageState();
+  ConsumerState<ActivitySummaryPage> createState() =>
+      _ActivitySummaryPageState();
 }
 
-class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
+class _ActivitySummaryPageState extends ConsumerState<ActivitySummaryPage> {
   late var _type = widget.detected;
   late final _track = EffortTrack(widget.activity);
   late final _hills = hillReports(_track);
+  late final _quality = assessHeartRate(widget.activity);
+  late final _cadence = cadenceReport(widget.activity);
+  late final List<ZoneTime>? _paceZones = widget.vmaKmh == null
+      ? null
+      : paceZoneTimes(_track, widget.vmaKmh!);
+  int? _maxHr;
+
+  bool get _useHeartRate => widget.activity.hasHeartRate && _quality.reliable;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMaxHeartRate();
+  }
+
+  /// FC max : la plus haute vue dans les sorties (FC fiable), modifiable.
+  Future<void> _loadMaxHeartRate() async {
+    final prefs = await ref.read(preferencesRepositoryProvider.future);
+    var stored = await prefs.maxHeartRate();
+    final seen = _useHeartRate ? observedMaxHeartRate(widget.activity) : null;
+    if (seen != null && (stored == null || seen > stored)) {
+      await prefs.setMaxHeartRate(seen);
+      stored = seen;
+    }
+    if (mounted) setState(() => _maxHr = stored);
+  }
+
+  Future<void> _editMaxHeartRate() async {
+    final controller = TextEditingController(text: '${_maxHr ?? ''}');
+    final value = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('FC max'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(suffixText: 'bpm'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final v = int.tryParse(controller.text.trim());
+              Navigator.of(context)
+                  .pop(v != null && v >= 120 && v <= 230 ? v : null);
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    if (value == null) return;
+    final prefs = await ref.read(preferencesRepositoryProvider.future);
+    await prefs.setMaxHeartRate(value);
+    if (mounted) setState(() => _maxHr = value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +113,15 @@ class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
     final vma = widget.vmaKmh == null
         ? null
         : compareToVma(_track, _type, widget.vmaKmh!);
+    final drift = _useHeartRate ? cardiacDrift(_track, _type) : null;
+    final hrZones = _useHeartRate && _maxHr != null
+        ? heartRateZoneTimes(a, _maxHr!)
+        : null;
+    final mismatch = zoneMismatch(
+      type: _type,
+      heartRateZones: hrZones,
+      paceZones: _paceZones,
+    );
     Widget row(String label, String value) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -122,14 +196,44 @@ class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
                     hills: _hills,
                     vma: vma,
                     type: _type,
+                    drift: drift,
+                    zones: mismatch,
+                    cadence: _cadence,
                   ),
                   gainable: gainableText(pacing.gainableS),
+                  warning: a.hasHeartRate && !_quality.reliable
+                      ? 'FC peu fiable sur cette sortie : pas de conclusion '
+                            'cardio.'
+                      : null,
                 ),
                 Text('Le détail', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
                 PacingTile(pacing: pacing, type: _type),
                 if (a.hasElevation) HillsTile(hills: _hills),
                 VmaTile(comparison: vma, vmaKmh: widget.vmaKmh, type: _type),
+                if (a.hasHeartRate)
+                  HeartTile(
+                    quality: _quality,
+                    driftText: driftLine(drift, _type, (
+                      tooShort: a.movingS < 40 * 60,
+                    )),
+                  ),
+                if (hrZones != null || _paceZones != null)
+                  ZonesTile(
+                    summary: mismatch != null
+                        ? 'Trop intense pour une ${_type.label.toLowerCase()} : '
+                              '${(mismatch.share * 100).round()} % du temps '
+                              '${mismatch.byHeartRate ? 'en zone 3 ou plus' : 'au-dessus de 80 % de ta VMA'}.'
+                        : _type == SessionType.endurance ||
+                              _type == SessionType.long
+                        ? 'Intensité conforme à une ${_type.label.toLowerCase()}.'
+                        : 'Répartition de ton temps par intensité.',
+                    heartRateZones: hrZones,
+                    paceZones: _paceZones,
+                    maxHeartRate: _useHeartRate ? _maxHr : null,
+                    onEditMaxHeartRate: _editMaxHeartRate,
+                  ),
+                if (_cadence case final c?) CadenceTile(report: c),
                 AnalysisTile(
                   title: 'Données de la sortie',
                   summary: a.pauses.isEmpty
@@ -180,8 +284,7 @@ class _ActivitySummaryPageState extends State<ActivitySummaryPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Indications d’entraînement, pas un avis médical. Cardio et '
-                  'cadence arrivent à l’étape suivante.',
+                  'Indications d’entraînement, pas un avis médical.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall,
                 ),

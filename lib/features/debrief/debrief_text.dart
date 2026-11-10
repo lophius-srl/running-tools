@@ -1,4 +1,5 @@
 import '../../domain/course_profile.dart';
+import '../../domain/debrief/cardio_analysis.dart';
 import '../../domain/debrief/pacing_analysis.dart';
 import '../../domain/debrief/session_type.dart';
 import '../common/decimal_text.dart';
@@ -32,8 +33,40 @@ List<Finding> keyFindings({
   required List<HillReport> hills,
   required VmaComparison? vma,
   required SessionType type,
+  CardiacDrift? drift,
+  ({double share, bool byHeartRate})? zones,
+  CadenceReport? cadence,
 }) {
   final findings = <Finding>[];
+  if (zones != null) {
+    findings.add(
+      Finding(
+        'Trop intense pour une ${type.label.toLowerCase()} : '
+        '${(zones.share * 100).round()} % du temps '
+        '${zones.byHeartRate ? 'en zone 3 ou plus (FC)' : 'au-dessus de 80 % de ta VMA'}.',
+        // Le but de la séance n'est pas tenu : en tête.
+        700,
+      ),
+    );
+  }
+  if (drift != null && drift.significant) {
+    findings.add(
+      Finding(
+        'Ton cœur a dérivé de ${drift.percent.round()} % en 2e partie : '
+        'fatigue, chaleur ou manque d’eau possibles.',
+        150,
+      ),
+    );
+  }
+  if (cadence != null && cadence.significantDrop) {
+    findings.add(
+      Finding(
+        'Ta foulée a faibli en fin de sortie : cadence en baisse de '
+        '${cadence.dropPercent.round()} %.',
+        60,
+      ),
+    );
+  }
   final steady = type != SessionType.interval;
 
   if (steady && (pacing.fastStartPercent ?? 0) > 5) {
@@ -77,7 +110,8 @@ List<Finding> keyFindings({
       );
     }
   }
-  if (vma != null &&
+  if (zones == null &&
+      vma != null &&
       vma.verdict == VmaVerdict.fast &&
       (type == SessionType.endurance || type == SessionType.long)) {
     findings.add(
@@ -177,4 +211,45 @@ String vmaLine(VmaComparison? c, double? vmaKmh, SessionType type) {
   return 'Tu as couru à ${c.percent.round()} % de ta VMA '
       '(${formatDecimal(vmaKmh)} km/h), côtes comprises. Pour $what, vise '
       '$range : $verdict.';
+}
+
+/// Pourquoi la FC est douteuse, en clair.
+String heartRateIssueText(HeartRateIssue issue) => switch (issue) {
+  HeartRateIssue.spikes => 'sauts brusques de plus de 25 bpm',
+  HeartRateIssue.dropout => 'valeur figée plus d’une minute (capteur décroché)',
+  HeartRateIssue.cadenceLock =>
+    'FC collée à ta cadence (défaut fréquent du capteur au poignet)',
+};
+
+/// Dérive cardiaque, en une phrase.
+String driftLine(CardiacDrift? d, SessionType type, CleanActivityInfo info) {
+  if (type == SessionType.interval) {
+    return 'Pas d’analyse de dérive pour le fractionné.';
+  }
+  if (d == null) {
+    return info.tooShort
+        ? 'Sortie trop courte pour mesurer la dérive (40 min minimum).'
+        : 'Dérive non mesurable sur cette sortie.';
+  }
+  final hr =
+      'FC de ${d.firstHalfHeartRate.round()} à ${d.secondHalfHeartRate.round()}';
+  if (d.significant) {
+    return 'Ton cœur a dérivé de ${d.percent.round()} % ($hr à effort égal) : '
+        'fatigue, chaleur ou manque d’eau possibles.';
+  }
+  return 'Pas de dérive : ton cœur est resté stable ($hr, échauffement '
+      'retiré).';
+}
+
+/// Contexte utile aux phrases sans recalculer.
+typedef CleanActivityInfo = ({bool tooShort});
+
+/// Cadence, en une phrase.
+String cadenceLine(CadenceReport c) {
+  final avg = 'Cadence moyenne ${c.average.round()} pas/min';
+  if (c.significantDrop) {
+    return '$avg ; elle a baissé de ${c.dropPercent.round()} % en fin de '
+        'sortie (de ${c.start.round()} à ${c.end.round()}) : signe de fatigue.';
+  }
+  return '$avg, stable jusqu’au bout.';
 }

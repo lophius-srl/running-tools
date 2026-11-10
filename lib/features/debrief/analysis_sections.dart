@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/course_profile.dart';
+import '../../domain/debrief/cardio_analysis.dart';
 import '../../domain/debrief/pacing_analysis.dart';
 import '../../domain/debrief/session_type.dart';
 import '../../domain/training_paces.dart';
@@ -169,10 +170,14 @@ class KeyFindingsCard extends StatelessWidget {
     super.key,
     required this.findings,
     required this.gainable,
+    this.warning,
   });
 
   final List<Finding> findings;
   final String? gainable;
+
+  /// Réserve sur les données (FC douteuse…).
+  final String? warning;
 
   @override
   Widget build(BuildContext context) {
@@ -217,9 +222,184 @@ class KeyFindingsCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+            if (warning case final w?)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.warning_amber,
+                      size: 20,
+                      color: theme.colorScheme.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(w)),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     );
   }
+}
+
+/// b) Dérive cardiaque et fiabilité de la FC.
+class HeartTile extends StatelessWidget {
+  const HeartTile({super.key, required this.quality, required this.driftText});
+
+  final HeartRateQuality quality;
+  final String driftText;
+
+  @override
+  Widget build(BuildContext context) {
+    final reliable = quality.reliable;
+    return AnalysisTile(
+      title: 'Ton cœur',
+      summary: reliable
+          ? driftText
+          : 'FC peu fiable sur cette sortie : pas de conclusion cardio.',
+      children: [
+        if (!reliable) ...[
+          const Text('Ce qui ne va pas :'),
+          for (final i in quality.issues) Text('• ${heartRateIssueText(i)}'),
+          const SizedBox(height: 8),
+          const Text(
+            'Une ceinture cardio est plus fiable qu’un capteur au poignet, '
+            'surtout en fractionné et par temps froid.',
+          ),
+        ] else
+          const Text(
+            'Dérive : à vitesse égale (côtes comprises), combien ta FC monte '
+            'entre la 1re et la 2e moitié, échauffement de 10 min retiré. '
+            'Au-delà de 5 %, la fatigue, la chaleur ou le manque d’eau '
+            'jouent.',
+          ),
+      ],
+    );
+  }
+}
+
+/// c) Temps par zone.
+class ZonesTile extends StatelessWidget {
+  const ZonesTile({
+    super.key,
+    required this.summary,
+    this.heartRateZones,
+    this.paceZones,
+    this.maxHeartRate,
+    this.onEditMaxHeartRate,
+  });
+
+  final String summary;
+  final List<ZoneTime>? heartRateZones;
+  final List<ZoneTime>? paceZones;
+  final int? maxHeartRate;
+  final VoidCallback? onEditMaxHeartRate;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget bars(String title, List<ZoneTime> zones) {
+      final total = zones.fold(0.0, (s, z) => s + z.seconds);
+      // Une seule teinte, de clair à foncé : l'intensité monte.
+      const ramp = [
+        Color(0xFFBFD4FB),
+        Color(0xFF8FB3F7),
+        Color(0xFF5B8DF0),
+        Color(0xFF2F68E0),
+        Color(0xFF0B2A6F),
+      ];
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 4),
+          for (var i = 0; i < zones.length; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child: Text(
+                      zones[i].label,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                  Expanded(
+                    flex: 4,
+                    child: LinearProgressIndicator(
+                      value: total == 0 ? 0 : zones[i].seconds / total,
+                      minHeight: 10,
+                      color: ramp[i % ramp.length],
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 44,
+                    child: Text(
+                      total == 0
+                          ? '–'
+                          : '${(zones[i].seconds / total * 100).round()} %',
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+        ],
+      );
+    }
+
+    return AnalysisTile(
+      title: 'Tes zones',
+      summary: summary,
+      children: [
+        if (heartRateZones case final z?) bars('Fréquence cardiaque', z),
+        if (paceZones case final z?)
+          bars('Allure (en % de ta VMA, côtes comprises)', z),
+        if (maxHeartRate != null)
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'FC max retenue : $maxHeartRate bpm (la plus haute vue dans '
+                  'tes sorties).',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+              TextButton(
+                onPressed: onEditMaxHeartRate,
+                child: const Text('Modifier'),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+/// e) Cadence et fatigue.
+class CadenceTile extends StatelessWidget {
+  const CadenceTile({super.key, required this.report});
+
+  final CadenceReport report;
+
+  @override
+  Widget build(BuildContext context) => AnalysisTile(
+    title: 'Ta foulée',
+    summary: cadenceLine(report),
+    children: [
+      Text(
+        '1re moitié : ${report.start.round()} pas/min · fin de sortie : '
+        '${report.end.round()} pas/min. La marche (sous 140 pas/min) est '
+        'exclue.',
+      ),
+    ],
+  );
 }

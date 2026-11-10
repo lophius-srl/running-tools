@@ -69,6 +69,14 @@ class FakePreferencesRepository implements PreferencesRepository {
 
   @override
   Future<void> setShoeLengthM(double value) async => shoeLength = value;
+
+  int? maxHr;
+
+  @override
+  Future<int?> maxHeartRate() async => maxHr;
+
+  @override
+  Future<void> setMaxHeartRate(int value) async => maxHr = value;
 }
 
 /// Piste instantanée, sans audio.
