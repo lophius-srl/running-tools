@@ -4,7 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/providers.dart';
 import '../../domain/debrief/cardio_analysis.dart';
 
+import '../../domain/course_profile.dart';
 import '../../domain/debrief/clean_activity.dart';
+import '../../domain/debrief/debrief_score.dart';
+import '../../domain/debrief/debrief_series.dart';
+import '../../domain/debrief/debrief_summary.dart';
 import '../../domain/debrief/effort_track.dart';
 import '../../domain/debrief/pacing_analysis.dart';
 import '../../domain/debrief/session_type.dart';
@@ -14,9 +18,10 @@ import '../common/run_widgets.dart';
 import '../course/course_text.dart';
 import '../home/home_entry.dart';
 import 'analysis_sections.dart';
+import 'debrief_chart.dart';
 import 'debrief_text.dart';
 
-/// Étape 1 du débrief : ce qui a été lu dans la sortie, et son type.
+/// Le débrief d'une sortie : note, conseils, graphique, détail.
 class ActivitySummaryPage extends ConsumerStatefulWidget {
   const ActivitySummaryPage({
     super.key,
@@ -65,6 +70,7 @@ class _ActivitySummaryPageState extends ConsumerState<ActivitySummaryPage> {
       stored = seen;
     }
     if (mounted) setState(() => _maxHr = stored);
+    await _save();
   }
 
   Future<void> _editMaxHeartRate() async {
@@ -99,16 +105,12 @@ class _ActivitySummaryPageState extends ConsumerState<ActivitySummaryPage> {
     final prefs = await ref.read(preferencesRepositoryProvider.future);
     await prefs.setMaxHeartRate(value);
     if (mounted) setState(() => _maxHr = value);
+    await _save();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+  /// Tout ce que calcule le débrief, pour l'écran et l'historique.
+  _Analysis _analyze() {
     final a = widget.activity;
-    final pace = a.averageKmh <= 0
-        ? '–'
-        : '${formatPace(paceForSpeed(a.averageKmh))}/km';
-    final climb = a.elevationChange();
     final pacing = PacingAnalysis.of(_track, _type);
     final vma = widget.vmaKmh == null
         ? null
@@ -122,21 +124,110 @@ class _ActivitySummaryPageState extends ConsumerState<ActivitySummaryPage> {
       heartRateZones: hrZones,
       paceZones: _paceZones,
     );
-    Widget row(String label, String value) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(child: Text(label)),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ],
+    final findings = keyFindings(
+      pacing: pacing,
+      hills: _hills,
+      vma: vma,
+      type: _type,
+      drift: drift,
+      zones: mismatch,
+      cadence: _cadence,
+    );
+    final score = debriefScore(
+      pacing: pacing,
+      hills: _hills,
+      type: _type,
+      movingS: a.movingS,
+      zones: mismatch,
+      drift: drift,
+      cadence: _cadence,
+    );
+    return (
+      pacing: pacing,
+      vma: vma,
+      drift: drift,
+      hrZones: hrZones,
+      mismatch: mismatch,
+      findings: findings,
+      score: score,
+    );
+  }
+
+  /// Moments clés à marquer sur le graphique.
+  List<ChartMarker> _markers(_Analysis x) => [
+    if (_type != SessionType.interval && (x.pacing.fastStartPercent ?? 0) > 5)
+      (km: 1.5, label: 'Départ rapide'),
+    for (final h in _hills)
+      if (h.section.kind == SectionKind.climb &&
+          h.lostS < -15 &&
+          (h.afterSlowdownS ?? 0) > 10)
+        (km: h.section.startM / 1000, label: 'Côte coûteuse'),
+    if (x.drift case final d? when d.significant)
+      (
+        km:
+            _track.distanceAtTime(d.fromS + (_track.timeS - d.fromS) / 2) /
+            1000,
+        label: 'Dérive',
+      ),
+  ];
+
+  /// Garde le résumé dans l'historique (même id pour la même sortie).
+  Future<void> _save() async {
+    final a = widget.activity;
+    final x = _analyze();
+    double? meanHr() {
+      final hrs = [for (final p in a.points) ?p.heartRate];
+      return hrs.isEmpty || !_useHeartRate
+          ? null
+          : hrs.reduce((s, h) => s + h) / hrs.length;
+    }
+
+    final repo = await ref.read(debriefRepositoryProvider.future);
+    await repo.save(
+      DebriefSummary(
+        id: 'debrief-${a.start.millisecondsSinceEpoch}',
+        date: a.start,
+        name: a.name,
+        type: _type,
+        distanceM: a.distanceM,
+        movingS: a.movingS,
+        score: x.score.value,
+        findings: [for (final f in x.findings) f.text],
+        gainableS: x.pacing.gainableS,
+        gapPaceS: x.pacing.averageGapPaceS,
+        elevationGainM: a.elevationChange()?.gain,
+        averageHeartRate: meanHr(),
+        driftPercent: x.drift?.percent,
+        averageCadence: _cadence?.average,
+        vmaPercent: x.vma?.percent,
+        start: a.startPosition,
       ),
     );
+  }
+
+  void _setType(SessionType type) {
+    setState(() => _type = type);
+    _save();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final a = widget.activity;
+    final x = _analyze();
+    final pace = a.averageKmh <= 0
+        ? '–'
+        : '${formatPace(paceForSpeed(a.averageKmh))}/km';
+    final climb = a.elevationChange();
+    final zonesSummary = switch (x.mismatch) {
+      final m? =>
+        'Trop intense pour une ${_type.label.toLowerCase()} : '
+            '${(m.share * 100).round()} % du temps '
+            '${m.byHeartRate ? 'en zone 3 ou plus' : 'au-dessus de 80 % de ta VMA'}.',
+      null when _type == SessionType.endurance || _type == SessionType.long =>
+        'Intensité conforme à une ${_type.label.toLowerCase()}.',
+      null => 'Répartition de ton temps par intensité.',
+    };
     Widget stream(String label, bool present) => Chip(
       avatar: Icon(
         present ? Icons.check_circle : Icons.remove_circle_outline,
@@ -157,21 +248,11 @@ class _ActivitySummaryPageState extends ConsumerState<ActivitySummaryPage> {
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
-                row('Distance', formatKm(a.distanceM, decimals: 2)),
-                row('Temps en mouvement', formatRaceTime(a.movingS)),
-                row(
-                  'Temps total',
-                  formatRaceTime(a.elapsed.inSeconds.toDouble()),
+                ScoreCard(
+                  score: x.score,
+                  gainable: gainableText(x.pacing.gainableS),
                 ),
-                row('Allure moyenne', pace),
-                if (climb != null)
-                  row(
-                    'Dénivelé',
-                    '+${climb.gain.round()} m / −${climb.loss.round()} m',
-                  ),
-                const SizedBox(height: 16),
-                Text('Type de séance', style: theme.textTheme.titleMedium),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -180,60 +261,69 @@ class _ActivitySummaryPageState extends ConsumerState<ActivitySummaryPage> {
                       ChoiceChip(
                         label: Text(t.label),
                         selected: _type == t,
-                        onSelected: (_) => setState(() => _type = t),
+                        onSelected: (_) => _setType(t),
                       ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Détecté : ${widget.detected.label}. Corrige si besoin.',
+                  'Type détecté : ${widget.detected.label}. Corrige si besoin.',
                   style: theme.textTheme.bodySmall,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 KeyFindingsCard(
-                  findings: keyFindings(
-                    pacing: pacing,
-                    hills: _hills,
-                    vma: vma,
-                    type: _type,
-                    drift: drift,
-                    zones: mismatch,
-                    cadence: _cadence,
-                  ),
-                  gainable: gainableText(pacing.gainableS),
+                  findings: x.findings,
+                  gainable: null,
                   warning: a.hasHeartRate && !_quality.reliable
                       ? 'FC peu fiable sur cette sortie : pas de conclusion '
                             'cardio.'
                       : null,
                 ),
+                DebriefChart(
+                  series: debriefSeries(_track),
+                  markers: _markers(x),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (label, value) in [
+                      ('Distance', formatKm(a.distanceM, decimals: 2)),
+                      ('En mouvement', formatRaceTime(a.movingS)),
+                      ('Allure', pace),
+                      if (climb != null)
+                        (
+                          'Dénivelé',
+                          '+${climb.gain.round()} / −${climb.loss.round()} m',
+                        ),
+                    ])
+                      _Stat(label: label, value: value),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 Text('Le détail', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
-                PacingTile(pacing: pacing, type: _type),
+                PacingTile(pacing: x.pacing, type: _type),
                 if (a.hasElevation) HillsTile(hills: _hills),
-                VmaTile(comparison: vma, vmaKmh: widget.vmaKmh, type: _type),
+                VmaTile(comparison: x.vma, vmaKmh: widget.vmaKmh, type: _type),
                 if (a.hasHeartRate)
                   HeartTile(
                     quality: _quality,
-                    driftText: driftLine(drift, _type, (
+                    driftText: driftLine(x.drift, _type, (
                       tooShort: a.movingS < 40 * 60,
                     )),
                   ),
-                if (hrZones != null || _paceZones != null)
+                if (x.hrZones != null || _paceZones != null)
                   ZonesTile(
-                    summary: mismatch != null
-                        ? 'Trop intense pour une ${_type.label.toLowerCase()} : '
-                              '${(mismatch.share * 100).round()} % du temps '
-                              '${mismatch.byHeartRate ? 'en zone 3 ou plus' : 'au-dessus de 80 % de ta VMA'}.'
-                        : _type == SessionType.endurance ||
-                              _type == SessionType.long
-                        ? 'Intensité conforme à une ${_type.label.toLowerCase()}.'
-                        : 'Répartition de ton temps par intensité.',
-                    heartRateZones: hrZones,
+                    summary: zonesSummary,
+                    heartRateZones: x.hrZones,
                     paceZones: _paceZones,
                     maxHeartRate: _useHeartRate ? _maxHr : null,
                     onEditMaxHeartRate: _editMaxHeartRate,
                   ),
                 if (_cadence case final c?) CadenceTile(report: c),
+                ScoreTile(score: x.score),
                 AnalysisTile(
                   title: 'Données de la sortie',
                   summary: a.pauses.isEmpty
@@ -257,6 +347,11 @@ class _ActivitySummaryPageState extends ConsumerState<ActivitySummaryPage> {
                           style: theme.textTheme.bodySmall,
                         ),
                       ),
+                    Text(
+                      'Temps total, pauses comprises : '
+                      '${formatRaceTime(a.elapsed.inSeconds.toDouble())}',
+                    ),
+                    const SizedBox(height: 4),
                     Wrap(
                       spacing: 8,
                       children: [
@@ -284,11 +379,55 @@ class _ActivitySummaryPageState extends ConsumerState<ActivitySummaryPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Indications d’entraînement, pas un avis médical.',
+                  'Indications d’entraînement, pas un avis médical. Le débrief '
+                  'est gardé dans ton historique (résumé, sans le parcours).',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall,
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+typedef _Analysis = ({
+  PacingAnalysis pacing,
+  VmaComparison? vma,
+  CardiacDrift? drift,
+  List<ZoneTime>? hrZones,
+  ({double share, bool byHeartRate})? mismatch,
+  List<Finding> findings,
+  DebriefScore score,
+});
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: theme.textTheme.labelSmall),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],

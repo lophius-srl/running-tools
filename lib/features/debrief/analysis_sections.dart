@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/course_profile.dart';
 import '../../domain/debrief/cardio_analysis.dart';
+import '../../domain/debrief/debrief_score.dart';
 import '../../domain/debrief/pacing_analysis.dart';
 import '../../domain/debrief/session_type.dart';
 import '../../domain/training_paces.dart';
@@ -399,6 +400,95 @@ class CadenceTile extends StatelessWidget {
         '1re moitié : ${report.start.round()} pas/min · fin de sortie : '
         '${report.end.round()} pas/min. La marche (sous 140 pas/min) est '
         'exclue.',
+      ),
+    ],
+  );
+}
+
+/// Note de gestion de course et temps gagnable, en haut du débrief.
+class ScoreCard extends StatelessWidget {
+  const ScoreCard({super.key, required this.score, required this.gainable});
+
+  final DebriefScore score;
+  final String? gainable;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0E7490), Color(0xFF1E63E9)],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Column(
+              children: [
+                Text(
+                  '${score.value}',
+                  style: theme.textTheme.displayMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  '/ 100',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+                ),
+              ],
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    score.label,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (gainable case final g?) ...[
+                    const SizedBox(height: 4),
+                    Text(g, style: const TextStyle(color: Colors.white)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// D'où vient la note.
+class ScoreTile extends StatelessWidget {
+  const ScoreTile({super.key, required this.score});
+
+  final DebriefScore score;
+
+  @override
+  Widget build(BuildContext context) => AnalysisTile(
+    title: 'Ta note',
+    summary: score.penalties.isEmpty
+        ? 'Aucun point retiré.'
+        : '${100 - score.value} points retirés.',
+    children: [
+      for (final MapEntry(:key, :value) in score.penalties.entries)
+        Text('$key : −${value.round()}'),
+      const SizedBox(height: 8),
+      const Text(
+        'On part de 100 ; chaque défaut retire des points, plafonnés pour '
+        'qu’aucun ne domine. En fractionné, seules l’intensité et la '
+        'cadence comptent.',
       ),
     ],
   );
