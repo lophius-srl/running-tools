@@ -169,6 +169,7 @@ class _StagedRunPageState extends ConsumerState<StagedRunPage> {
         page,
         Positioned.fill(
           child: PocketModeOverlay(
+            entry: HomeEntry.ofStagedTest(widget.setup.test),
             onDropOut: () => _dropOut(track),
             onExit: () => setState(() => _pocketMode = false),
           ),

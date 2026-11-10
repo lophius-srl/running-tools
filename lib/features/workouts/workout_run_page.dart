@@ -138,6 +138,7 @@ class _WorkoutRunPageState extends ConsumerState<WorkoutRunPage> {
         page,
         Positioned.fill(
           child: PocketModeOverlay(
+            entry: HomeEntry.workouts,
             onExit: () => setState(() => _pocketMode = false),
           ),
         ),

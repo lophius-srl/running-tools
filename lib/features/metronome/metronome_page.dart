@@ -289,6 +289,7 @@ class _MetronomePageState extends ConsumerState<MetronomePage> {
         page,
         Positioned.fill(
           child: PocketModeOverlay(
+            entry: HomeEntry.metronome,
             onExit: () => setState(() => _pocketMode = false),
           ),
         ),

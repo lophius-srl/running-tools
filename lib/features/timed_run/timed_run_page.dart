@@ -134,6 +134,7 @@ class _TimedRunPageState extends ConsumerState<TimedRunPage> {
         page,
         Positioned.fill(
           child: PocketModeOverlay(
+            entry: HomeEntry.ofTimedTest(widget.test),
             onExit: () => setState(() => _pocketMode = false),
           ),
         ),

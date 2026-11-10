@@ -133,6 +133,7 @@ class _FartlekRunPageState extends ConsumerState<FartlekRunPage> {
         page,
         Positioned.fill(
           child: PocketModeOverlay(
+            entry: HomeEntry.fartlek,
             onExit: () => setState(() => _pocketMode = false),
           ),
         ),
