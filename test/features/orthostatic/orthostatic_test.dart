@@ -11,12 +11,14 @@ void main() {
   late FakeReminderScheduler reminders;
   late FakeBeepPlayer player;
   late FakeHeartRateMonitor belt;
+  late FakeHeartRateHistory health;
 
   setUp(() {
     repo = FakeOrthostaticRepository();
     reminders = FakeReminderScheduler();
     player = FakeBeepPlayer();
     belt = FakeHeartRateMonitor();
+    health = FakeHeartRateHistory();
   });
 
   Future<void> pumpPage(WidgetTester tester) async {
@@ -31,6 +33,7 @@ void main() {
           reminders: reminders,
           player: player,
           heartRate: belt,
+          healthHeartRate: health,
         ),
         child: const MaterialApp(home: OrthostaticPage()),
       ),
@@ -156,5 +159,46 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('pas transmis assez'), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(3));
+  });
+
+  testWidgets('Apple Santé : mesures lues sur la période du test', (
+    tester,
+  ) async {
+    health.readings.addAll([
+      for (var t = 150; t < 180; t += 10)
+        (offset: Duration(seconds: t), bpm: 55),
+      (offset: const Duration(seconds: 195), bpm: 98),
+      for (var t = 270; t < 300; t += 10)
+        (offset: Duration(seconds: t), bpm: 76),
+    ]);
+    await pumpPage(tester);
+    await tester.tap(find.text('Faire le test (5 min)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apple Santé'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('montre au poignet'), findsOneWidget);
+
+    await player.play();
+    player.emitPosition(const Duration(seconds: 12));
+    player.emitPosition(const Duration(minutes: 5, seconds: 3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Voir le résultat'));
+    await tester.pumpAndSettle();
+
+    final (start, end) = health.lastQuery!;
+    expect(end.difference(start), const Duration(minutes: 5));
+    final r = repo.results.single;
+    expect((r.lyingBpm, r.standingPeakBpm, r.standingStableBpm), (55, 98, 76));
+    expect(r.source, HeartRateSourceKind.health);
+  });
+
+  testWidgets('Apple Santé refusé : message clair', (tester) async {
+    health.authorized = false;
+    await pumpPage(tester);
+    await tester.tap(find.text('Faire le test (5 min)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apple Santé'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Accès à Apple Santé refusé'), findsOneWidget);
   });
 }

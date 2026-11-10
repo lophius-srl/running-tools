@@ -8,6 +8,7 @@ import '../../audio/orthostatic_program.dart';
 import '../../audio/providers.dart';
 import '../../audio/track_service.dart';
 import '../../data/providers.dart';
+import '../../device/heart_rate_history.dart';
 import '../../device/heart_rate_monitor.dart';
 import '../../device/screen_wake_lock.dart';
 import '../../domain/orthostatic.dart';
@@ -15,7 +16,8 @@ import '../common/run_widgets.dart';
 import 'orthostatic_page.dart';
 
 /// Test guidé à la voix. Ceinture Bluetooth : FC mesurée en continu ;
-/// manuel (ou mesures insuffisantes) : comptage des pulsations 15 s × 4.
+/// Apple Santé : FC lue après le test ; manuel (ou mesures insuffisantes) :
+/// comptage des pulsations 15 s × 4.
 class OrthostaticRunPage extends ConsumerStatefulWidget {
   const OrthostaticRunPage({
     super.key,
@@ -48,6 +50,12 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
   int? _liveBpm;
   final _samples = <HeartRateSample>[];
 
+  bool get _manual => widget.source == HeartRateSourceKind.manual;
+
+  /// Heure réelle du début du test (temps 0), pour interroger Apple Santé.
+  DateTime? _testStart;
+  var _fetching = false;
+
   /// Mesures continues insuffisantes : on bascule sur le comptage manuel.
   var _fallbackToManual = false;
 
@@ -65,17 +73,38 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
     super.initState();
     _wakeLock.enable();
     _subscriptions
-      ..add(_player.positionStream.listen((p) => setState(() => _position = p)))
+      ..add(_player.positionStream.listen(_onPosition))
       ..add(_player.playingStream.listen((p) => setState(() => _playing = p)));
     _prepare();
+  }
+
+  void _onPosition(Duration position) {
+    setState(() => _position = position);
+    final t = _track?.activityTimeAt(position) ?? -1;
+    if (_playing && t >= 0 && t < _protocol.total.inSeconds) {
+      _testStart = DateTime.now().subtract(
+        Duration(milliseconds: (t * 1000).round()),
+      );
+    }
   }
 
   Future<void> _prepare() async {
     try {
       final service = await ref.read(trackServiceProvider.future);
       final track = await service.prepare(
-        orthostaticProgram(_protocol, manual: _monitor == null),
+        orthostaticProgram(_protocol, manual: _manual),
       );
+      if (widget.source == HeartRateSourceKind.health &&
+          !await ref.read(heartRateHistoryProvider).authorize()) {
+        if (mounted) {
+          setState(
+            () => _error =
+                'Accès à Apple Santé refusé : autorise la '
+                'lecture de la fréquence cardiaque dans Réglages > Santé.',
+          );
+        }
+        return;
+      }
       if (_monitor case final monitor?) {
         _scanSubscription = monitor.scan().listen(
           (devices) => setState(() => _devices = devices),
@@ -120,13 +149,29 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
     }
   }
 
-  /// Fin du test avec la ceinture : résultat direct, sinon comptages.
+  /// Mesures d'Apple Santé, ramenées au temps du test.
+  Future<List<HeartRateSample>> _healthSamples() async {
+    final start = _testStart;
+    if (start == null) return const [];
+    final points = await ref
+        .read(heartRateHistoryProvider)
+        .between(start, start.add(_protocol.total));
+    return [for (final p in points) (time: p.at.difference(start), bpm: p.bpm)];
+  }
+
+  /// Fin du test avec un capteur : résultat direct, sinon comptages.
   Future<void> _finishWithSamples() async {
+    setState(() => _fetching = true);
+    final samples = widget.source == HeartRateSourceKind.health
+        ? await _healthSamples().catchError((_) => <HeartRateSample>[])
+        : _samples;
+    if (!mounted) return;
+    setState(() => _fetching = false);
     final result = OrthostaticResult.fromSamples(
-      _samples,
+      samples,
       protocol: _protocol,
       date: DateTime.now(),
-      source: HeartRateSourceKind.bluetooth,
+      source: widget.source,
     );
     if (result == null) {
       setState(() => _fallbackToManual = true);
@@ -220,19 +265,22 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
                 ),
               ),
             )
-          : finished && (_monitor == null || _fallbackToManual)
+          : finished && (_manual || _fallbackToManual)
           ? _CountsForm(
               counts: _counts,
               onSave: _save,
-              note: _fallbackToManual
-                  ? 'La ceinture n’a pas transmis assez de mesures : saisis '
-                        'tes comptages si tu les as faits.'
-                  : null,
+              note: !_fallbackToManual
+                  ? null
+                  : widget.source == HeartRateSourceKind.health
+                  ? 'Apple Santé n’a pas assez de mesures pendant le test : '
+                        'saisis tes comptages si tu les as faits.'
+                  : 'La ceinture n’a pas transmis assez de mesures : saisis '
+                        'tes comptages si tu les as faits.',
             )
           : finished
           ? Center(
               child: FilledButton(
-                onPressed: _finishWithSamples,
+                onPressed: _fetching ? null : _finishWithSamples,
                 style: FilledButton.styleFrom(minimumSize: const Size(240, 64)),
                 child: const Text('Voir le résultat'),
               ),
@@ -270,6 +318,13 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
                       fontWeight: FontWeight.w800,
                     ),
                   )
+                else if (widget.source == HeartRateSourceKind.health)
+                  const Text(
+                    'Garde ta montre au poignet. Pour une mesure continue, '
+                    'lance une séance « Autre » sur la montre avant de '
+                    'commencer, et arrête-la à la fin.',
+                    textAlign: TextAlign.center,
+                  )
                 else
                   const Text(
                     'Lance le test, pose le téléphone à côté de toi et '
@@ -295,7 +350,7 @@ class _OrthostaticRunPageState extends ConsumerState<OrthostaticRunPage> {
   String _instruction(Duration elapsed, {required bool started}) {
     if (!started) return 'Allonge-toi sur le dos';
     if (elapsed < _protocol.standUpAt) {
-      return _monitor == null && manualCountStarts(_protocol).first <= elapsed
+      return _manual && manualCountStarts(_protocol).first <= elapsed
           ? 'Compte tes pulsations'
           : 'Allongé, détends-toi';
     }
