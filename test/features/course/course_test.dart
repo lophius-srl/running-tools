@@ -81,8 +81,8 @@ void main() {
     await tester.tap(find.text('Importer un GPX'));
     await tester.pumpAndSettle();
 
-    // Le lissage arrondit le sommet : D+ un peu sous 60 m.
-    expect(find.text('5,0 km · D+ 57 m · D− 57 m'), findsOneWidget);
+    // Le profil lissé arrondit le sommet : D+ un peu sous 60 m.
+    expect(find.text('5,0 km · D+ 58 m · D− 58 m'), findsOneWidget);
     expect(find.textContaining('Montée · 2,0 km'), findsOneWidget);
     expect(find.textContaining('Descente · 3,0 km'), findsOneWidget);
     // Base 5:00/km sur le plat : un peu plus de 25 min avec la bosse.

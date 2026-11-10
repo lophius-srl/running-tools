@@ -107,6 +107,9 @@ class _Axis {
   }
 }
 
+/// Au-delà (s) entre deux points, la distance n'est plus vitesse × temps.
+const _maxIntegrationS = 5.0;
+
 /// Suivi en direct : rejette les points aberrants, lisse la position
 /// (filtre de Kalman position + vitesse, la précision du point servant de
 /// variance) et cumule la distance. Ne garde aucune trace : seulement
@@ -161,6 +164,7 @@ class GpsTracker {
       _reset(zx, zy, measureVariance);
     } else {
       final dt = fix.time.difference(_lastTime!).inMilliseconds / 1000;
+      final (beforeX, beforeY) = (_x, _y);
       final q = settings.accelerationNoise;
       _east!
         ..predict(dt, q)
@@ -168,7 +172,13 @@ class GpsTracker {
       _north!
         ..predict(dt, q)
         ..update(zy, measureVariance);
-      _count(dt);
+      if (dt > _maxIntegrationS) {
+        // Long trou (pause, GPS perdu) : la vitesse d'avant ne dit rien du
+        // trou ; on compte la ligne droite entre les deux positions.
+        _distanceM += sqrt(pow(_x - beforeX, 2) + pow(_y - beforeY, 2));
+      } else {
+        _count(dt);
+      }
     }
     _lastTime = fix.time;
     _accuracyM = fix.accuracyM;

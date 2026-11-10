@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -71,8 +72,34 @@ void main() {
       );
       expect(a.pauses, hasLength(1));
       expect(a.pauses.single.atM, closeTo(2000, 30));
-      expect(a.pauses.single.duration.inSeconds, closeTo(90, 5));
-      expect(a.elapsed.inSeconds - a.movingS, closeTo(90, 6));
+      // Les secondes de ralentissement et de relance restent du mouvement.
+      expect(a.pauses.single.duration.inSeconds, closeTo(90, 10));
+      expect(a.elapsed.inSeconds - a.movingS, closeTo(90, 10));
+    });
+
+    test('marcher n’est pas une pause : 3 min à 4 km/h, 2 min à 2,5 km/h', () {
+      final points = scriptedRun(
+        km: 4,
+        kmhAt: (d) => d > 1500 && d < 1700
+            ? 4
+            : d > 2500 && d < 2585
+            ? 2.5
+            : 11,
+      );
+      final a = CleanActivity.from(parseGpxActivity(toGpx(points)));
+      expect(a.pauses, isEmpty);
+      expect(a.movingS, closeTo(points.last.second, 3));
+    });
+
+    test('GPS perdu en avançant (tunnel) : pas une pause', () {
+      final points = scriptedRun(km: 3, kmhAt: (_) => 12);
+      final withGap = [
+        for (final p in points)
+          if (p.second < 400 || p.second > 460) p,
+      ];
+      final a = CleanActivity.from(parseGpxActivity(toGpx(withGap)));
+      expect(a.pauses, isEmpty);
+      expect(a.distanceM, closeTo(3000, 40));
     });
 
     test('trou dans l’enregistrement (pause auto) : compté comme pause', () {
@@ -114,6 +141,26 @@ void main() {
       final a = CleanActivity.from(parseFitActivity(toFit(easyRun(km: 3))));
       expect(a.distanceM, closeTo(3000, 10));
       expect(a.rejectedFixes, 0);
+    });
+
+    test('D+ : bosses courtes comptées, bruit de ±1 m ignoré', () {
+      // Trois bosses de 8 m sur 80 m chacune, puis la bosse de 60 m.
+      double rolling(double d) {
+        final bump = d % 400;
+        if (d < 1200 && bump < 80) return 200 + 8 * sin(bump / 80 * pi);
+        return hillAt(d);
+      }
+
+      final a = CleanActivity.from(
+        parseGpxActivity(
+          toGpx(scriptedRun(km: 6, kmhAt: (_) => 11, elevationAt: rolling)),
+        ),
+      );
+      final c = a.elevationChange()!;
+      expect(c.gain, closeTo(3 * 8 + 60, 6));
+      expect(c.loss, closeTo(3 * 8 + 60, 6));
+      // Le profil lissé, lui, écrase les petites bosses.
+      expect(a.profile!.climb().gain, lessThan(c.gain - 10));
     });
 
     test('profil d’altitude lissé', () {

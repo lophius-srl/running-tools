@@ -36,6 +36,7 @@ class _DebriefsPageState extends ConsumerState<DebriefsPage> {
           builder: (_) => ActivitySummaryPage(
             activity: activity,
             detected: detectSessionType(activity, vmaKmh: vma),
+            vmaKmh: vma,
           ),
         ),
       );

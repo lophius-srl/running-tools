@@ -132,4 +132,20 @@ void main() {
     fixes.forEach(t.add);
     expect(haversineM(t.position!, fixes.last.position), lessThan(5));
   });
+
+  test('trou de 2 min sans bouger : la vitesse d’avant n’est pas comptée', () {
+    final fixes = simulate(speedMps: 3, seconds: 60);
+    final last = fixes.last;
+    final t = GpsTracker();
+    fixes.forEach(t.add);
+    final before = t.distanceM;
+    t.add(
+      GpsFix(
+        time: last.time.add(const Duration(minutes: 2)),
+        position: last.position,
+        accuracyM: 5,
+      ),
+    );
+    expect(t.distanceM - before, lessThan(10));
+  });
 }

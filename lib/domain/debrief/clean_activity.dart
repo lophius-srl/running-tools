@@ -30,18 +30,26 @@ typedef ActivityPause = ({double atM, Duration duration});
 /// Réglages du nettoyage.
 class CleaningSettings {
   const CleaningSettings({
-    this.stopSpeedMps = 1.0,
-    this.minPause = const Duration(seconds: 10),
+    this.stationarySpeedMps = 0.5,
+    this.stationaryWindowS = 5,
+    this.minPause = const Duration(seconds: 20),
+    this.maxRecordingGap = const Duration(seconds: 10),
     this.minHeartRate = 35,
     this.maxHeartRate = 230,
     this.minStreamShare = 0.5,
   });
 
-  /// En dessous, on est arrêté (marche lente comprise).
-  final double stopSpeedMps;
+  /// En dessous (1,8 km/h, moyenne sur ±[stationaryWindowS]), on est
+  /// immobile. Marcher, même lentement en côte, n'est pas une pause.
+  final double stationarySpeedMps;
+  final double stationaryWindowS;
 
-  /// Un arrêt plus court compte comme du mouvement (feu rouge, demi-tour).
+  /// Un arrêt plus court compte comme du mouvement (feu rouge, lacet).
   final Duration minPause;
+
+  /// Trou plus long dans l'enregistrement : pause de la montre, sauf si on
+  /// a avancé pendant ce temps (GPS perdu dans un tunnel).
+  final Duration maxRecordingGap;
   final int minHeartRate;
   final int maxHeartRate;
 
@@ -73,7 +81,10 @@ class CleanActivity {
     final watchDistance =
         samples.where((s) => s.distanceM != null).length >=
         samples.length * settings.minStreamShare;
-    final tracker = GpsTracker();
+    // Seuil d'arrêt du filtre abaissé : la marche lente compte.
+    final tracker = GpsTracker(
+      settings: const GpsFilterSettings(minSpeedMps: 0.3),
+    );
     final distances = <double?>[];
     var rejected = 0;
     double? lastWatch;
@@ -99,11 +110,33 @@ class CleanActivity {
 
     final points = <ActivityPoint>[];
     final pauses = <ActivityPause>[];
+    final t0 = samples.first.time;
+    final seconds = [
+      for (final s in samples) s.time.difference(t0).inMilliseconds / 1000,
+    ];
+    double distanceOf(int i) => distances[i] ?? 0;
+
+    // Immobile : vitesse moyenne sur une fenêtre de ±15 s sous 1,8 km/h.
+    final stationary = List.filled(samples.length, false);
+    var lo = 0, hi = 0;
+    for (var i = 0; i < samples.length; i++) {
+      while (seconds[i] - seconds[lo] > settings.stationaryWindowS) {
+        lo++;
+      }
+      while (hi < samples.length - 1 &&
+          seconds[hi + 1] - seconds[i] <= settings.stationaryWindowS) {
+        hi++;
+      }
+      final dt = seconds[hi] - seconds[lo];
+      stationary[i] =
+          dt > 0 &&
+          (distanceOf(hi) - distanceOf(lo)) / dt < settings.stationarySpeedMps;
+    }
+
     var moving = 0.0;
-    // Arrêt en cours : début (index) et durée, pas encore décidé.
-    int? stopStart;
     var stopS = 0.0;
     final minPauseS = settings.minPause.inMilliseconds / 1000;
+    final maxGapS = settings.maxRecordingGap.inMilliseconds / 1000;
 
     void addPoint(int i) {
       final s = samples[i];
@@ -125,14 +158,27 @@ class CleanActivity {
       );
     }
 
+    void flushStop() {
+      if (stopS == 0) return;
+      if (stopS >= minPauseS) {
+        pauses.add((
+          atM: points.last.distanceM,
+          duration: Duration(milliseconds: (stopS * 1000).round()),
+        ));
+      } else {
+        moving += stopS;
+      }
+      stopS = 0;
+    }
+
     addPoint(0);
     for (var i = 1; i < samples.length; i++) {
-      final dt =
-          samples[i].time.difference(samples[i - 1].time).inMilliseconds / 1000;
-      final dd = (distances[i] ?? 0) - (distances[i - 1] ?? 0);
+      final dt = seconds[i] - seconds[i - 1];
       if (dt <= 0) continue;
-      if (dt > minPauseS) {
-        // Trou dans l'enregistrement (pause automatique de la montre).
+      final dd = distanceOf(i) - distanceOf(i - 1);
+      if (dt > maxGapS && dd < dt * settings.stationarySpeedMps) {
+        // Montre en pause : trou sans déplacement.
+        flushStop();
         pauses.add((
           atM: points.last.distanceM,
           duration: Duration(milliseconds: (dt * 1000).round()),
@@ -140,24 +186,11 @@ class CleanActivity {
         addPoint(i);
         continue;
       }
-      if (dd / dt < settings.stopSpeedMps) {
-        stopStart ??= i;
+      if (stationary[i]) {
         stopS += dt;
         continue;
       }
-      if (stopStart != null) {
-        if (stopS >= minPauseS) {
-          pauses.add((
-            atM: points.last.distanceM,
-            duration: Duration(milliseconds: (stopS * 1000).round()),
-          ));
-        } else {
-          // Arrêt bref : compté comme du mouvement.
-          moving += stopS;
-        }
-        stopStart = null;
-        stopS = 0;
-      }
+      flushStop();
       moving += dt;
       addPoint(i);
     }
@@ -197,7 +230,19 @@ class CleanActivity {
   /// Vitesse moyenne en mouvement (km/h).
   double get averageKmh => movingS == 0 ? 0 : distanceM / movingS * 3.6;
 
-  /// Profil d'altitude lissé (pas de 10 m), `null` sans altitudes.
+  /// Dénivelé positif et négatif (m) sur les altitudes enregistrées, sans
+  /// lissage en distance : seul un écart de [thresholdM] écarte le bruit.
+  /// `null` sans altitudes.
+  ({double gain, double loss})? elevationChange({double thresholdM = 2}) =>
+      hasElevation
+      ? elevationGainLoss([
+          for (final p in points) ?p.elevationM,
+        ], thresholdM: thresholdM)
+      : null;
+
+  /// Profil d'altitude lissé (pas de 10 m) pour corriger l'allure de la
+  /// pente ; pas pour le dénivelé, que le lissage sous-estime.
+  /// `null` sans altitudes.
   CourseProfile? get profile {
     if (!hasElevation || distanceM < 2 * CourseProfile.stepM) return null;
     final withEle = points.where((p) => p.elevationM != null).toList();
