@@ -46,7 +46,10 @@ void main() {
   testWidgets('chaque entrée est dans un onglet, et s\'y affiche', (
     tester,
   ) async {
-    final all = [for (final t in HomeTab.values) ...t.entries];
+    final all = [
+      for (final t in HomeTab.values) ...t.entries,
+      ...HomeTab.toolbox,
+    ];
     expect(all.toSet(), HomeEntry.values.toSet());
     expect(all, hasLength(HomeEntry.values.length), reason: 'sans doublon');
     await pumpApp(tester);
@@ -61,10 +64,24 @@ void main() {
         expect(find.text(entry.label), findsOneWidget, reason: entry.label);
       }
     }
+    // La boîte à outils, depuis Aujourd'hui.
+    await openTab(tester, HomeTab.today);
+    await tester.tap(find.text('Boîte à outils'));
+    await tester.pumpAndSettle();
+    for (final entry in HomeTab.toolbox) {
+      expect(find.text(entry.label), findsOneWidget, reason: entry.label);
+    }
+  });
+
+  testWidgets('Aujourd’hui : mode libre, puis l’objectif', (tester) async {
+    await pumpApp(tester);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Mode libre'), findsOneWidget);
   });
 
   testWidgets('un appui ouvre l\'écran correspondant', (tester) async {
     await pumpApp(tester);
+    await openTab(tester, HomeTab.evaluate);
     await tester.scrollUntilVisible(find.text('VAMEVAL'), 100);
     await tester.tap(find.text('VAMEVAL'));
     await tester.pumpAndSettle();
@@ -77,6 +94,7 @@ void main() {
 
   testWidgets('Cooper ouvre directement le chrono', (tester) async {
     await pumpApp(tester);
+    await openTab(tester, HomeTab.evaluate);
     await tester.tap(find.text('Cooper'));
     await tester.pumpAndSettle();
     expect(find.text('Départ dans 10 s'), findsOneWidget);
@@ -84,7 +102,7 @@ void main() {
 
   testWidgets('Historique ouvre la liste des tests', (tester) async {
     await pumpApp(tester);
-    await openTab(tester, HomeTab.me);
+    await openTab(tester, HomeTab.analyze);
     await tester.tap(find.text('Historique'));
     await tester.pumpAndSettle();
     expect(find.text('Aucun test enregistré'), findsOneWidget);
@@ -94,6 +112,7 @@ void main() {
     tester,
   ) async {
     await pumpApp(tester);
+    await openTab(tester, HomeTab.evaluate);
     await tester.scrollUntilVisible(
       find.text('Mise en place'),
       100,
@@ -161,12 +180,12 @@ void main() {
     expect(find.text('VMA 16,5 km/h · il y a 12 j'), findsOneWidget);
     expect(find.text('Forme : référence en cours'), findsOneWidget);
 
-    await openTab(tester, HomeTab.raceDay);
+    await openTab(tester, HomeTab.race);
     expect(find.text('Semi de Lyon'), findsOneWidget);
     expect(find.text('Prochaine course · dans 9 j'), findsOneWidget);
     expect(find.text('Checklist : 1/2'), findsOneWidget);
 
-    await openTab(tester, HomeTab.me);
+    await openTab(tester, HomeTab.evaluate);
     expect(find.text('Dernière VMA'), findsOneWidget);
     expect(find.text('16,5 km/h'), findsOneWidget);
     expect(find.text('+20 bpm'), findsOneWidget);

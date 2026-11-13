@@ -18,7 +18,9 @@ import '../history/history_page.dart';
 import '../metronome/metronome_page.dart';
 import '../course/courses_page.dart';
 import '../ghost/ghost_page.dart';
+import '../common/run_widgets.dart';
 import '../goal/goal_page.dart';
+import '../goal/goal_provider.dart';
 import '../gps/gps_check_page.dart';
 import '../orthostatic/orthostatic_page.dart';
 import '../lane_calculator/lane_calculator_page.dart';
@@ -41,7 +43,7 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  var _tab = HomeTab.tests;
+  var _tab = HomeTab.today;
 
   /// Mise en place depuis l'accueil : choisir l'espacement, puis le test.
   Future<void> _openSetupAssistant(BuildContext context) async {
@@ -100,6 +102,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         page = const CoursesPage();
       case HomeEntry.goal:
         page = const GoalPage();
+      case HomeEntry.toolbox:
+        page = _ToolboxPage(onOpen: _open);
       case HomeEntry.profile:
         page = const ProfilePage();
       case HomeEntry.zones:
@@ -137,14 +141,16 @@ class _HomePageState extends ConsumerState<HomePage> {
         .push(MaterialPageRoute<void>(builder: (_) => page));
     ref
       ..invalidate(homeSummaryProvider)
-      ..invalidate(zoneProfileProvider);
+      ..invalidate(zoneProfileProvider)
+      ..invalidate(goalStateProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     final summary = ref.watch(homeSummaryProvider).value;
+    final goal = ref.watch(goalStateProvider).value;
     final entries = switch (_tab) {
-      HomeTab.tests => [
+      HomeTab.evaluate => [
         for (final e in _tab.entries)
           if (!HomeTab.vmaTests.contains(e)) e,
       ],
@@ -157,9 +163,36 @@ class _HomePageState extends ConsumerState<HomePage> {
           key: PageStorageKey(_tab),
           slivers: [
             SliverToBoxAdapter(child: _Header(summary: summary)),
-            if (_tab == HomeTab.tests)
+            if (_tab == HomeTab.today)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  child: switch (goal) {
+                    (goal: final g?, phase: final p?, past: _) => InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      onTap: () => _open(context, HomeEntry.goal),
+                      child: GoalCard(goal: g, phase: p),
+                    ),
+                    _ => _ToolCard(
+                      entry: HomeEntry.goal,
+                      subtitle:
+                          'Mode libre : fixe une course objectif pour '
+                          'organiser ta préparation.',
+                      onTap: () => _open(context, HomeEntry.goal),
+                    ),
+                  },
+                ),
+              ),
+            if (_tab == HomeTab.evaluate) ...[
+              SliverToBoxAdapter(
+                child: _MeCards(
+                  summary: summary,
+                  onHistory: () => _open(context, HomeEntry.history),
+                  onForm: () => _open(context, HomeEntry.orthostatic),
+                ),
+              ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                 sliver: SliverGrid.count(
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
@@ -174,7 +207,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ],
                 ),
               ),
-            if (_tab == HomeTab.raceDay && summary?.nextRace != null)
+            ],
+            if (_tab == HomeTab.race && summary?.nextRace != null)
               SliverToBoxAdapter(
                 child: _NextRaceCard(
                   race: summary!.nextRace!,
@@ -184,18 +218,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                 ),
               ),
-            if (_tab == HomeTab.me)
-              SliverToBoxAdapter(
-                child: _MeCards(
-                  summary: summary,
-                  onHistory: () => _open(context, HomeEntry.history),
-                  onForm: () => _open(context, HomeEntry.orthostatic),
-                ),
-              ),
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
                 16,
-                _tab == HomeTab.tests ? 0 : 20,
+                _tab == HomeTab.evaluate ? 0 : 20,
                 16,
                 24,
               ),
@@ -554,10 +580,13 @@ class _TestCard extends StatelessWidget {
 }
 
 class _ToolCard extends StatelessWidget {
-  const _ToolCard({required this.entry, required this.onTap});
+  const _ToolCard({required this.entry, required this.onTap, this.subtitle});
 
   final HomeEntry entry;
   final VoidCallback onTap;
+
+  /// Remplace le sous-titre de l'entrée.
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -580,10 +609,35 @@ class _ToolCard extends StatelessWidget {
           entry.label,
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-        subtitle: Text(entry.subtitle),
+        subtitle: Text(subtitle ?? entry.subtitle),
         trailing: Icon(Icons.chevron_right, color: scheme.primary),
         onTap: onTap,
       ),
     );
   }
+}
+
+/// Boîte à outils : les outils ponctuels, hors de la préparation.
+class _ToolboxPage extends StatelessWidget {
+  const _ToolboxPage({required this.onOpen});
+
+  final void Function(BuildContext context, HomeEntry entry) onOpen;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Column(
+      children: [
+        const RunHeader(entry: HomeEntry.toolbox),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              for (final entry in HomeTab.toolbox)
+                _ToolCard(entry: entry, onTap: () => onOpen(context, entry)),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }

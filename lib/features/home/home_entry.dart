@@ -60,6 +60,12 @@ enum HomeEntry {
     Color(0xFF0B2A6F),
     Color(0xFF1E63E9),
   ]),
+  toolbox(
+    'Boîte à outils',
+    'Couloirs, chrono, club, métronome, GPS',
+    Icons.handyman,
+    [Color(0xFF475569), Color(0xFF1E63E9)],
+  ),
   goal('Mon objectif', 'La course qui organise ta préparation', Icons.flag, [
     Color(0xFFDB2777),
     Color(0xFF1E63E9),
@@ -141,43 +147,34 @@ enum HomeEntry {
   };
 }
 
-/// Onglets de l'accueil.
+/// Onglets de l'accueil : la préparation d'une course, dans l'ordre.
 enum HomeTab {
-  tests('Tests', Icons.timer_outlined, Icons.timer, [
+  today('Aujourd’hui', Icons.today_outlined, Icons.today, [HomeEntry.toolbox]),
+  evaluate('Évaluer', Icons.speed_outlined, Icons.speed, [
     HomeEntry.cooper,
     HomeEntry.halfCooper,
     HomeEntry.vameval,
     HomeEntry.lucLeger,
-    HomeEntry.club,
     HomeEntry.setup,
+    HomeEntry.orthostatic,
+    HomeEntry.profile,
+    HomeEntry.zones,
   ]),
-  training(
-    'Entraînement',
-    Icons.directions_run_outlined,
-    Icons.directions_run,
-    [
-      HomeEntry.workouts,
-      HomeEntry.fartlek,
-      HomeEntry.deck,
-      HomeEntry.ghost,
-      HomeEntry.duo,
-      HomeEntry.metronome,
-      HomeEntry.multiTimer,
-    ],
-  ),
-  raceDay('Jour J', Icons.flag_outlined, Icons.flag, [
+  train('S’entraîner', Icons.directions_run_outlined, Icons.directions_run, [
+    HomeEntry.workouts,
+    HomeEntry.fartlek,
+    HomeEntry.deck,
+    HomeEntry.ghost,
+    HomeEntry.duo,
+  ]),
+  race('Course', Icons.flag_outlined, Icons.flag, [
     HomeEntry.goal,
     HomeEntry.simulator,
     HomeEntry.checklists,
-    HomeEntry.lanes,
   ]),
-  me('Moi', Icons.person_outline, Icons.person, [
-    HomeEntry.zones,
-    HomeEntry.profile,
+  analyze('Analyser', Icons.insights_outlined, Icons.insights, [
     HomeEntry.debrief,
     HomeEntry.history,
-    HomeEntry.orthostatic,
-    HomeEntry.gps,
   ]);
 
   const HomeTab(this.label, this.icon, this.selectedIcon, this.entries);
@@ -193,5 +190,14 @@ enum HomeTab {
     HomeEntry.halfCooper,
     HomeEntry.vameval,
     HomeEntry.lucLeger,
+  ];
+
+  /// Outils ponctuels, rangés à part (Boîte à outils).
+  static const toolbox = [
+    HomeEntry.lanes,
+    HomeEntry.multiTimer,
+    HomeEntry.club,
+    HomeEntry.metronome,
+    HomeEntry.gps,
   ];
 }
