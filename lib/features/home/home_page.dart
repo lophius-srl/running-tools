@@ -24,6 +24,9 @@ import '../lane_calculator/lane_calculator_page.dart';
 import '../multi_timer/multi_timer_setup_page.dart';
 import '../setup_assistant/spacing_assistant_page.dart';
 import '../workouts/workouts_page.dart';
+import '../zones/profile_page.dart';
+import '../zones/zone_profile.dart';
+import '../zones/zones_page.dart';
 import '../staged_setup/staged_setup_page.dart';
 import '../timed_run/timed_run_page.dart';
 import 'home_entry.dart';
@@ -94,6 +97,10 @@ class _HomePageState extends ConsumerState<HomePage> {
         page = const GhostPage(duo: true);
       case HomeEntry.simulator:
         page = const CoursesPage();
+      case HomeEntry.profile:
+        page = const ProfilePage();
+      case HomeEntry.zones:
+        page = const ZonesPage();
       case HomeEntry.debrief:
         page = const DebriefsPage();
       case HomeEntry.gps:
@@ -125,7 +132,9 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _push(BuildContext context, Widget page) async {
     await Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => page));
-    ref.invalidate(homeSummaryProvider);
+    ref
+      ..invalidate(homeSummaryProvider)
+      ..invalidate(zoneProfileProvider);
   }
 
   @override

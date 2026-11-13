@@ -6,6 +6,7 @@ import 'deck_repository.dart';
 import 'course_repository.dart';
 import 'debrief_repository.dart';
 import 'fartlek_repository.dart';
+import 'profile_repository.dart';
 import 'ghost_repository.dart';
 import 'history_repository.dart';
 import 'orthostatic_repository.dart';
@@ -76,4 +77,9 @@ final courseRepositoryProvider = FutureProvider<CourseRepository>(
 final debriefRepositoryProvider = FutureProvider<DebriefRepository>(
   (ref) async =>
       JsonDebriefRepository(await getApplicationDocumentsDirectory()),
+);
+
+final profileRepositoryProvider = FutureProvider<ProfileRepository>(
+  (ref) async =>
+      JsonProfileRepository(await getApplicationDocumentsDirectory()),
 );

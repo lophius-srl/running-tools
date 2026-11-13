@@ -52,6 +52,14 @@ enum HomeEntry {
     Color(0xFF0E7490),
     Color(0xFF1E63E9),
   ]),
+  profile('Mon profil', 'VMA, FC max, FC de repos', Icons.badge, [
+    Color(0xFF334155),
+    Color(0xFF1E63E9),
+  ]),
+  zones('Mes zones', 'Allures et FC de Z1 à Z5', Icons.stacked_bar_chart, [
+    Color(0xFF0B2A6F),
+    Color(0xFF1E63E9),
+  ]),
   gps('Suivi GPS', 'Vérifier distance et allure en direct', Icons.gps_fixed, [
     Color(0xFF0F766E),
     Color(0xFF1E63E9),
@@ -159,6 +167,8 @@ enum HomeTab {
     HomeEntry.lanes,
   ]),
   me('Moi', Icons.person_outline, Icons.person, [
+    HomeEntry.zones,
+    HomeEntry.profile,
     HomeEntry.debrief,
     HomeEntry.history,
     HomeEntry.orthostatic,
