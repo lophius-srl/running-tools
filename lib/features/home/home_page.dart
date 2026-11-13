@@ -18,6 +18,7 @@ import '../history/history_page.dart';
 import '../metronome/metronome_page.dart';
 import '../course/courses_page.dart';
 import '../ghost/ghost_page.dart';
+import '../goal/goal_page.dart';
 import '../gps/gps_check_page.dart';
 import '../orthostatic/orthostatic_page.dart';
 import '../lane_calculator/lane_calculator_page.dart';
@@ -97,6 +98,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         page = const GhostPage(duo: true);
       case HomeEntry.simulator:
         page = const CoursesPage();
+      case HomeEntry.goal:
+        page = const GoalPage();
       case HomeEntry.profile:
         page = const ProfilePage();
       case HomeEntry.zones:

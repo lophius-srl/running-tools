@@ -15,6 +15,7 @@ import 'package:running_tools/data/debrief_repository.dart';
 import 'package:running_tools/data/deck_repository.dart';
 import 'package:running_tools/data/fartlek_repository.dart';
 import 'package:running_tools/data/ghost_repository.dart';
+import 'package:running_tools/data/goal_repository.dart';
 import 'package:running_tools/data/history_repository.dart';
 import 'package:running_tools/data/orthostatic_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
@@ -36,6 +37,7 @@ import 'package:running_tools/domain/checklist.dart';
 import 'package:running_tools/domain/debrief/debrief_summary.dart';
 import 'package:running_tools/domain/deck.dart';
 import 'package:running_tools/domain/ghost.dart';
+import 'package:running_tools/domain/goal/race_goal.dart';
 import 'package:running_tools/domain/gps_tracker.dart';
 import 'package:running_tools/domain/marker_spacing.dart';
 import 'package:running_tools/domain/orthostatic.dart';
@@ -627,6 +629,33 @@ class FakeProfileRepository implements ProfileRepository {
       data = _with(seenVersions: data.versions.length);
 }
 
+class FakeGoalRepository implements GoalRepository {
+  final goals = <RaceGoal>[];
+
+  @override
+  Future<List<RaceGoal>> all() async =>
+      [...goals]..sort((a, b) => b.date.compareTo(a.date));
+
+  @override
+  Future<RaceGoal?> active() async =>
+      (await all()).where((g) => !g.archived).firstOrNull;
+
+  @override
+  Future<void> save(RaceGoal goal) async {
+    final others = [
+      for (final g in goals)
+        if (g.id != goal.id)
+          !goal.archived && !g.archived ? g.copyWith(archived: true) : g,
+    ];
+    goals
+      ..clear()
+      ..addAll([goal, ...others]);
+  }
+
+  @override
+  Future<void> delete(String id) async => goals.removeWhere((g) => g.id == id);
+}
+
 /// Remplace tous les services natifs par des faux.
 List<Override> fakeOverrides({
   FakeSetupRepository? setups,
@@ -655,7 +684,11 @@ List<Override> fakeOverrides({
   FakeCourseRepository? courses,
   FakeDebriefRepository? debriefs,
   FakeProfileRepository? profile,
+  FakeGoalRepository? goals,
 }) => [
+  goalRepositoryProvider.overrideWith(
+    (ref) async => goals ?? FakeGoalRepository(),
+  ),
   profileRepositoryProvider.overrideWith(
     (ref) async => profile ?? FakeProfileRepository(),
   ),

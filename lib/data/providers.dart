@@ -6,6 +6,7 @@ import 'deck_repository.dart';
 import 'course_repository.dart';
 import 'debrief_repository.dart';
 import 'fartlek_repository.dart';
+import 'goal_repository.dart';
 import 'profile_repository.dart';
 import 'ghost_repository.dart';
 import 'history_repository.dart';
@@ -82,4 +83,8 @@ final debriefRepositoryProvider = FutureProvider<DebriefRepository>(
 final profileRepositoryProvider = FutureProvider<ProfileRepository>(
   (ref) async =>
       JsonProfileRepository(await getApplicationDocumentsDirectory()),
+);
+
+final goalRepositoryProvider = FutureProvider<GoalRepository>(
+  (ref) async => JsonGoalRepository(await getApplicationDocumentsDirectory()),
 );

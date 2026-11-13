@@ -60,6 +60,10 @@ enum HomeEntry {
     Color(0xFF0B2A6F),
     Color(0xFF1E63E9),
   ]),
+  goal('Mon objectif', 'La course qui organise ta préparation', Icons.flag, [
+    Color(0xFFDB2777),
+    Color(0xFF1E63E9),
+  ]),
   gps('Suivi GPS', 'Vérifier distance et allure en direct', Icons.gps_fixed, [
     Color(0xFF0F766E),
     Color(0xFF1E63E9),
@@ -162,6 +166,7 @@ enum HomeTab {
     ],
   ),
   raceDay('Jour J', Icons.flag_outlined, Icons.flag, [
+    HomeEntry.goal,
     HomeEntry.simulator,
     HomeEntry.checklists,
     HomeEntry.lanes,
