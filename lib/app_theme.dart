@@ -7,6 +7,39 @@ abstract final class AppColors {
   static const sky = Color(0xFF38B6FF);
 }
 
+/// Dégradés : un seul pour la marque, partout dans l'app.
+abstract final class AppGradients {
+  /// Cartes et pictogrammes.
+  static const brand = [AppColors.navy, AppColors.blue];
+
+  /// En-têtes de page.
+  static const header = [AppColors.navy, AppColors.blue, AppColors.sky];
+}
+
+/// Arrondis communs.
+abstract final class AppRadius {
+  /// Bas des en-têtes de page.
+  static const header = 28.0;
+
+  /// Cartes.
+  static const card = 20.0;
+
+  /// Tuiles, boutons, pastilles de chiffres.
+  static const tile = 14.0;
+
+  /// Badges, ruban de zones.
+  static const chip = 10.0;
+}
+
+/// Espacements communs.
+abstract final class AppSpace {
+  static const xs = 4.0;
+  static const s = 8.0;
+  static const m = 12.0;
+  static const l = 16.0;
+  static const xl = 24.0;
+}
+
 abstract final class AppTheme {
   static ThemeData light() => _build(Brightness.light);
   static ThemeData dark() => _build(Brightness.dark);
@@ -25,7 +58,9 @@ abstract final class AppTheme {
           : scheme.surface,
       cardTheme: CardThemeData(
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app_theme.dart';
 import '../../domain/zones/zones.dart';
 
 /// Couleur d'une zone : la même partout dans l'app. Du gris (facile) au
@@ -41,7 +42,7 @@ class ZoneBadge extends StatelessWidget {
     final color = zoneColor(zone);
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
         border: Border.all(color: color, width: 1.5),
       ),
       child: Row(

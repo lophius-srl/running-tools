@@ -2,12 +2,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
 import '../../domain/checklist.dart';
+import '../../domain/debrief/debrief_summary.dart';
 import '../../domain/orthostatic.dart';
 import '../../domain/test_record.dart';
 
 /// Ce que l'accueil montre d'un coup d'œil.
 class HomeSummary {
-  const HomeSummary({this.lastTest, this.form, this.nextRace});
+  const HomeSummary({
+    this.lastTest,
+    this.form,
+    this.nextRace,
+    this.lastDebrief,
+  });
 
   /// Construit le résumé à partir des données brutes (listes du plus
   /// récent au plus ancien pour les tests).
@@ -16,6 +22,7 @@ class HomeSummary {
     required List<OrthostaticResult> orthostatic,
     required List<RaceChecklist> races,
     required DateTime now,
+    List<DebriefSummary> debriefs = const [],
   }) {
     final today = DateTime(now.year, now.month, now.day);
     final upcoming = races.where((r) => !r.raceDate.isBefore(today)).toList()
@@ -32,12 +39,16 @@ class HomeSummary {
       lastTest: tests.firstOrNull,
       form: form,
       nextRace: upcoming.firstOrNull,
+      lastDebrief: debriefs.firstOrNull,
     );
   }
 
   final TestRecord? lastTest;
   final ({OrthostaticResult result, FormStatus status})? form;
   final RaceChecklist? nextRace;
+
+  /// Le débrief le plus récent.
+  final DebriefSummary? lastDebrief;
 }
 
 /// « aujourd'hui », « hier », « il y a 12 j ».
@@ -72,10 +83,12 @@ final homeSummaryProvider = FutureProvider<HomeSummary>((ref) async {
   final tests = await ref.read(historyRepositoryProvider.future);
   final orthostatic = await ref.read(orthostaticRepositoryProvider.future);
   final checklists = await ref.read(checklistRepositoryProvider.future);
+  final debriefs = await ref.read(debriefRepositoryProvider.future);
   return HomeSummary.from(
     tests: await tests.all(),
     orthostatic: await orthostatic.all(),
     races: await checklists.races(),
     now: DateTime.now(),
+    debriefs: await debriefs.all(),
   );
 });
