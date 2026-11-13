@@ -12,8 +12,9 @@ abstract interface class PreferencesRepository {
   Future<double?> shoeLengthM();
   Future<void> setShoeLengthM(double value);
 
-  /// FC max retenue pour les zones cardio (bpm), `null` si inconnue.
+  /// Plus haute FC relevée dans les sorties importées (bpm), et sa date.
   Future<int?> maxHeartRate();
+  Future<DateTime?> maxHeartRateDate();
   Future<void> setMaxHeartRate(int value);
 }
 
@@ -42,7 +43,15 @@ class JsonPreferencesRepository implements PreferencesRepository {
       (await _store.read())?['maxHeartRate'] as int?;
 
   @override
-  Future<void> setMaxHeartRate(int value) => _set('maxHeartRate', value);
+  Future<DateTime?> maxHeartRateDate() async => DateTime.tryParse(
+    (await _store.read())?['maxHeartRateDate'] as String? ?? '',
+  );
+
+  @override
+  Future<void> setMaxHeartRate(int value) async {
+    await _set('maxHeartRate', value);
+    await _set('maxHeartRateDate', DateTime.now().toIso8601String());
+  }
 
   Future<void> _set(String key, Object value) async {
     final current = await _store.read() ?? {};

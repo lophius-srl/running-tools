@@ -18,6 +18,7 @@ import 'package:running_tools/data/ghost_repository.dart';
 import 'package:running_tools/data/history_repository.dart';
 import 'package:running_tools/data/orthostatic_repository.dart';
 import 'package:running_tools/data/preferences_repository.dart';
+import 'package:running_tools/data/profile_repository.dart';
 import 'package:running_tools/data/providers.dart';
 import 'package:running_tools/data/recent_names_repository.dart';
 import 'package:running_tools/data/setup_repository.dart';
@@ -42,6 +43,7 @@ import 'package:running_tools/domain/stage_protocol.dart';
 import 'package:running_tools/domain/staged_test_setup.dart';
 import 'package:running_tools/domain/test_record.dart';
 import 'package:running_tools/domain/workout.dart';
+import 'package:running_tools/domain/zones/zones.dart';
 import 'package:running_tools/measure/distance_measurer.dart';
 
 /// Dépôt de réglages en mémoire.
@@ -76,6 +78,11 @@ class FakePreferencesRepository implements PreferencesRepository {
 
   @override
   Future<int?> maxHeartRate() async => maxHr;
+
+  DateTime? maxHrDate;
+
+  @override
+  Future<DateTime?> maxHeartRateDate() async => maxHrDate;
 
   @override
   Future<void> setMaxHeartRate(int value) async => maxHr = value;
@@ -547,6 +554,79 @@ class FakeDebriefRepository implements DebriefRepository {
       debriefs.removeWhere((d) => d.id == id);
 }
 
+class FakeProfileRepository implements ProfileRepository {
+  ProfileData data = const ProfileData();
+  DateTime now = DateTime(2026, 11, 13, 8);
+
+  ProfileData _with({
+    Object? manualVma = _keep,
+    Object? manualMaxHeartRate = _keep,
+    Object? manualRestHeartRate = _keep,
+    Object? birthYear = _keep,
+    ZoneSettings? settings,
+    List<ZoneVersion>? versions,
+    int? seenVersions,
+  }) => ProfileData(
+    manualVma: manualVma == _keep
+        ? data.manualVma
+        : manualVma as ({double value, DateTime date})?,
+    manualMaxHeartRate: manualMaxHeartRate == _keep
+        ? data.manualMaxHeartRate
+        : manualMaxHeartRate as ({int value, DateTime date})?,
+    manualRestHeartRate: manualRestHeartRate == _keep
+        ? data.manualRestHeartRate
+        : manualRestHeartRate as ({int value, DateTime date})?,
+    birthYear: birthYear == _keep ? data.birthYear : birthYear as int?,
+    settings: settings ?? data.settings,
+    versions: versions ?? data.versions,
+    seenVersions: seenVersions ?? data.seenVersions,
+  );
+
+  static const _keep = Object();
+
+  @override
+  Future<ProfileData> read() async => data;
+
+  @override
+  Future<void> setManualVma(double? value) async =>
+      data = _with(manualVma: value == null ? null : (value: value, date: now));
+
+  @override
+  Future<void> setManualMaxHeartRate(int? value) async => data = _with(
+    manualMaxHeartRate: value == null ? null : (value: value, date: now),
+  );
+
+  @override
+  Future<void> setManualRestHeartRate(int? value) async => data = _with(
+    manualRestHeartRate: value == null ? null : (value: value, date: now),
+  );
+
+  @override
+  Future<void> setBirthYear(int? year) async => data = _with(birthYear: year);
+
+  @override
+  Future<void> setSettings(ZoneSettings settings) async =>
+      data = _with(settings: settings);
+
+  @override
+  Future<bool> recordVersion(ZoneSet zones, DateTime date) async {
+    final last = data.versions.lastOrNull;
+    if (last != null && last.zones.sameAs(zones)) return false;
+    data = _with(
+      versions: [
+        ...data.versions,
+        ZoneVersion(date: date, zones: zones),
+      ],
+      seenVersions: data.versions.isEmpty ? 1 : null,
+    );
+    return true;
+  }
+
+  @override
+  Future<void> markVersionsSeen() async =>
+      data = _with(seenVersions: data.versions.length);
+}
+
 /// Remplace tous les services natifs par des faux.
 List<Override> fakeOverrides({
   FakeSetupRepository? setups,
@@ -574,7 +654,11 @@ List<Override> fakeOverrides({
   FakeGhostRepository? ghosts,
   FakeCourseRepository? courses,
   FakeDebriefRepository? debriefs,
+  FakeProfileRepository? profile,
 }) => [
+  profileRepositoryProvider.overrideWith(
+    (ref) async => profile ?? FakeProfileRepository(),
+  ),
   debriefRepositoryProvider.overrideWith(
     (ref) async => debriefs ?? FakeDebriefRepository(),
   ),
