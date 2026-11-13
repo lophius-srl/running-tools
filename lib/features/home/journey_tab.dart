@@ -29,7 +29,14 @@ class JourneyTab extends ConsumerWidget {
       value: SystemUiOverlayStyle.light,
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _Header(goalName: goal?.goal?.name)),
+          SliverToBoxAdapter(
+            child: PageHeader(
+              title: 'Ma prépa',
+              subtitle: goal?.goal?.name == null
+                  ? 'Évaluer, s’entraîner, courir, analyser, et on recommence.'
+                  : 'Vers « ${goal!.goal!.name} »',
+            ),
+          ),
           for (final stage in JourneyStage.values)
             SliverToBoxAdapter(
               child: _StageCard(
@@ -45,48 +52,6 @@ class JourneyTab extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.goalName});
-
-  final String? goalName;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [AppColors.navy, AppColors.blue, AppColors.sky],
-      ),
-      borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-    ),
-    child: SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ma prépa',
-              style: Theme.of(context).textTheme.headlineMedium
-                  ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
-            ),
-            Text(
-              goalName == null
-                  ? 'Évaluer, s’entraîner, courir, analyser : et on '
-                        'recommence.'
-                  : 'Vers « $goalName »',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }
 
 /// Une étape : numéro sur la frise, question, écrans en tuiles.
@@ -108,7 +73,7 @@ class _StageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = stage.gradient.last;
+    const accent = AppColors.blue;
     return Stack(
       children: [
         // Trait de la frise vers l'étape suivante, derrière la carte.

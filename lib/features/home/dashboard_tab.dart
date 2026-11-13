@@ -129,16 +129,15 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final vma = profile?.vma;
     final rest = profile?.restHeartRate;
     final max = profile?.maxHeartRate;
     Widget stat(String label, String value) => Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        padding: const EdgeInsets.all(AppSpace.m),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.tile),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,50 +165,17 @@ class _Hero extends StatelessWidget {
         ),
       ),
     );
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.navy, AppColors.blue, AppColors.sky],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                longDate(DateTime.now()),
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              ),
-              Text(
-                'Bonjour',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  stat(
-                    'VMA',
-                    vma == null ? '–' : '${formatDecimal(vma.value)} km/h',
-                  ),
-                  const SizedBox(width: 8),
-                  stat('FC repos', rest == null ? '–' : '${rest.value} bpm'),
-                  const SizedBox(width: 8),
-                  stat('FC max', max == null ? '–' : '${max.value} bpm'),
-                ],
-              ),
-            ],
-          ),
-        ),
+    return PageHeader(
+      overline: longDate(DateTime.now()),
+      title: 'Bonjour',
+      child: Row(
+        children: [
+          stat('VMA', vma == null ? '–' : '${formatDecimal(vma.value)} km/h'),
+          const SizedBox(width: AppSpace.s),
+          stat('FC repos', rest == null ? '–' : '${rest.value} bpm'),
+          const SizedBox(width: AppSpace.s),
+          stat('FC max', max == null ? '–' : '${max.value} bpm'),
+        ],
       ),
     );
   }
@@ -238,25 +204,25 @@ class _GoalCard extends StatelessWidget {
     final current = phase == null ? null : stageOf(phase!);
     const white = TextStyle(color: Colors.white);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      padding: const EdgeInsets.fromLTRB(AppSpace.l, 0, AppSpace.l, AppSpace.m),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFDB2777), Color(0xFF7C3AED), Color(0xFF1E63E9)],
+            colors: AppGradients.brand,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF7C3AED).withValues(alpha: 0.18),
+              color: AppColors.blue.withValues(alpha: 0.2),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(AppSpace.l),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -303,18 +269,18 @@ class _GoalCard extends StatelessWidget {
               const SizedBox(height: 16),
               Material(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(AppRadius.tile),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(AppRadius.tile),
                   onTap: onAction,
                   child: Padding(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(AppSpace.m),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: const BoxDecoration(
-                            color: Color(0xFF7C3AED),
+                            color: AppColors.blue,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -330,7 +296,7 @@ class _GoalCard extends StatelessWidget {
                               Text(
                                 action.title,
                                 style: const TextStyle(
-                                  color: Color(0xFF1E1B4B),
+                                  color: AppColors.navy,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 16,
                                 ),
@@ -397,13 +363,13 @@ class JourneyStepper extends StatelessWidget {
                           ? const Icon(
                               Icons.check,
                               size: 12,
-                              color: Color(0xFF7C3AED),
+                              color: AppColors.blue,
                             )
                           : i == current.index
                           ? Icon(
                               stages[i].icon,
                               size: 16,
-                              color: const Color(0xFF7C3AED),
+                              color: AppColors.blue,
                             )
                           : null,
                     ),
@@ -469,13 +435,13 @@ class _ZonesCard extends StatelessWidget {
         children: [
           if (profile.hasUnseenChange && profile.lastChanges.isNotEmpty)
             Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(bottom: AppSpace.m),
+              padding: const EdgeInsets.all(AppSpace.m),
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer.withValues(
                   alpha: 0.5,
                 ),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.tile),
               ),
               child: Row(
                 children: [
@@ -491,7 +457,7 @@ class _ZonesCard extends StatelessWidget {
               ),
             ),
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
             child: Row(
               children: [
                 for (final id in ZoneId.values)

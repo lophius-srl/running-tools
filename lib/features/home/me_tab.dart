@@ -25,32 +25,10 @@ class MeTab extends ConsumerWidget {
       value: SystemUiOverlayStyle.light,
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.navy, AppColors.blue, AppColors.sky],
-                ),
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(32),
-                ),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-                  child: Text(
-                    'Moi',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
+          const SliverToBoxAdapter(
+            child: PageHeader(
+              title: 'Moi',
+              subtitle: 'Mon profil, mes zones, mes résultats et mes outils.',
             ),
           ),
           SliverToBoxAdapter(
@@ -102,8 +80,8 @@ class MeTab extends ConsumerWidget {
               title: 'Mes zones',
               onTap: () => onOpen(HomeEntry.zones),
               child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
+                spacing: AppSpace.s,
+                runSpacing: AppSpace.s,
                 children: [
                   for (final id in ZoneId.values)
                     ZoneBadge(zone: id, zones: zones, showHeartRate: false),
@@ -120,7 +98,12 @@ class MeTab extends ConsumerWidget {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.l + 4,
+                AppSpace.s,
+                AppSpace.l + 4,
+                AppSpace.m,
+              ),
               child: Text(
                 'Boîte à outils',
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -130,7 +113,12 @@ class MeTab extends ConsumerWidget {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.l,
+              0,
+              AppSpace.l,
+              AppSpace.xl,
+            ),
             sliver: SliverToBoxAdapter(
               child: EntryGrid(entries: HomeTab.toolbox, onOpen: onOpen),
             ),

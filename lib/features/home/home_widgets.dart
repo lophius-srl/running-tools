@@ -1,9 +1,76 @@
 import 'package:flutter/material.dart';
 
+import '../../app_theme.dart';
 import 'home_entry.dart';
 
 /// Ouvre l'écran d'une entrée.
 typedef EntryOpener = void Function(HomeEntry entry);
+
+/// En-tête de page commun aux onglets : titre, sous-titre, contenu.
+class PageHeader extends StatelessWidget {
+  const PageHeader({
+    super.key,
+    required this.title,
+    this.overline,
+    this.subtitle,
+    this.child,
+  });
+
+  final String title;
+
+  /// Petite ligne au-dessus du titre (la date…).
+  final String? overline;
+  final String? subtitle;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final soft = TextStyle(color: Colors.white.withValues(alpha: 0.8));
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpace.l),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppGradients.header,
+        ),
+        borderRadius: BorderRadius.vertical(
+          bottom: Radius.circular(AppRadius.header),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.l + 4,
+            AppSpace.m,
+            AppSpace.l + 4,
+            AppSpace.xl,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (overline != null) Text(overline!, style: soft),
+              Text(
+                title,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (subtitle != null) Text(subtitle!, style: soft),
+              if (child != null) ...[
+                const SizedBox(height: AppSpace.l),
+                child!,
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// Carte blanche arrondie, titre facultatif.
 class DashCard extends StatelessWidget {
@@ -24,21 +91,21 @@ class DashCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      padding: const EdgeInsets.fromLTRB(AppSpace.l, 0, AppSpace.l, AppSpace.m),
       child: Material(
         color: theme.colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpace.l),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (title != null)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.only(bottom: AppSpace.m),
                     child: Row(
                       children: [
                         Expanded(
@@ -88,24 +155,24 @@ class EntryTile extends StatelessWidget {
     final theme = Theme.of(context);
     return Material(
       color: color ?? theme.colorScheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppRadius.card),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpace.m),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(9),
+                padding: const EdgeInsets.all(AppSpace.s),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: entry.gradient),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadius.tile),
                 ),
                 child: Icon(entry.icon, color: Colors.white, size: 22),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.m),
               // Le nom en entier, réduit s'il le faut.
               FittedBox(
                 fit: BoxFit.scaleDown,
@@ -147,10 +214,10 @@ class EntryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final width = (constraints.maxWidth - 10) / 2;
+      final width = (constraints.maxWidth - AppSpace.m) / 2;
       return Wrap(
-        spacing: 10,
-        runSpacing: 10,
+        spacing: AppSpace.m,
+        runSpacing: AppSpace.m,
         children: [
           for (final e in entries)
             SizedBox(
