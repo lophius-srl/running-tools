@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:running_tools/app.dart';
-import 'package:running_tools/domain/checklist.dart';
+import 'package:running_tools/domain/debrief/debrief_summary.dart';
+import 'package:running_tools/domain/debrief/session_type.dart';
+import 'package:running_tools/domain/goal/race_goal.dart';
 import 'package:running_tools/domain/orthostatic.dart';
 import 'package:running_tools/domain/test_record.dart';
 import 'package:running_tools/features/home/home_entry.dart';
@@ -14,7 +16,8 @@ void main() {
     WidgetTester tester, {
     FakeHistoryRepository? history,
     FakeOrthostaticRepository? orthostatic,
-    FakeChecklistRepository? checklists,
+    FakeGoalRepository? goals,
+    FakeDebriefRepository? debriefs,
   }) async {
     // Taille d'un iPhone 15 Pro.
     tester.view
@@ -26,11 +29,13 @@ void main() {
         overrides: fakeOverrides(
           history: history,
           orthostatic: orthostatic,
-          checklists: checklists,
+          goals: goals,
+          debriefs: debriefs,
         ),
         child: const RunningToolsApp(),
       ),
     );
+    await tester.pumpAndSettle();
   }
 
   Future<void> openTab(WidgetTester tester, HomeTab tab) async {
@@ -43,49 +48,121 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('chaque entrée est dans un onglet, et s\'y affiche', (
+  Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+    await tester.scrollUntilVisible(
+      finder,
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+  }
+
+  TestRecord vameval(int daysAgo, double vma) => TestRecord(
+    id: 't',
+    date: DateTime.now().subtract(Duration(days: daysAgo)),
+    kind: TestKind.vameval,
+    vmaKmh: vma,
+    vo2max: vma * 3.5,
+  );
+
+  testWidgets('chaque écran a sa place, une seule fois, et s’y affiche', (
     tester,
   ) async {
     final all = [
-      for (final t in HomeTab.values) ...t.entries,
+      for (final s in JourneyStage.values) ...s.entries,
+      ...HomeTab.meEntries,
       ...HomeTab.toolbox,
     ];
     expect(all.toSet(), HomeEntry.values.toSet());
     expect(all, hasLength(HomeEntry.values.length), reason: 'sans doublon');
+
     await pumpApp(tester);
-    for (final tab in HomeTab.values) {
-      await openTab(tester, tab);
-      for (final entry in tab.entries) {
-        await tester.scrollUntilVisible(
-          find.text(entry.label),
-          100,
-          scrollable: find.byType(Scrollable).first,
-        );
+    await openTab(tester, HomeTab.journey);
+    for (final stage in JourneyStage.values) {
+      for (final entry in stage.entries) {
+        await scrollTo(tester, find.text(entry.label));
         expect(find.text(entry.label), findsOneWidget, reason: entry.label);
       }
     }
-    // La boîte à outils, depuis Aujourd'hui.
-    await openTab(tester, HomeTab.today);
-    await tester.tap(find.text('Boîte à outils'));
-    await tester.pumpAndSettle();
+    await openTab(tester, HomeTab.me);
     for (final entry in HomeTab.toolbox) {
+      await scrollTo(tester, find.text(entry.label));
       expect(find.text(entry.label), findsOneWidget, reason: entry.label);
     }
   });
 
-  testWidgets('Aujourd’hui : mode libre, puis l’objectif', (tester) async {
+  testWidgets('mode libre : prochaine action « test de VMA » → le parcours', (
+    tester,
+  ) async {
     await pumpApp(tester);
+    expect(find.text('Pas encore d’objectif'), findsOneWidget);
+    expect(find.text('Fais un test de VMA'), findsOneWidget);
+    await tester.tap(find.text('Fais un test de VMA'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Mode libre'), findsOneWidget);
+    expect(find.text('Ma prépa'), findsWidgets);
+    expect(find.text('Tu es ici'), findsOneWidget);
+    expect(find.text('Où j’en suis ?'), findsOneWidget);
   });
 
-  testWidgets('un appui ouvre l\'écran correspondant', (tester) async {
+  testWidgets('tableau de bord : chiffres, objectif, zones, forme, débrief', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    await pumpApp(
+      tester,
+      history: FakeHistoryRepository()..records.add(vameval(12, 15.5)),
+      orthostatic: FakeOrthostaticRepository()
+        ..results.add(
+          OrthostaticResult(
+            date: now,
+            lyingBpm: 52,
+            standingPeakBpm: 85,
+            standingStableBpm: 72,
+            source: HeartRateSourceKind.manual,
+          ),
+        ),
+      goals: FakeGoalRepository()
+        ..goals.add(
+          RaceGoal(
+            id: 'g',
+            name: 'Semi de Lyon',
+            date: now.add(const Duration(days: 34)),
+            distanceM: 21097.5,
+            targetTime: const Duration(hours: 1, minutes: 35),
+          ),
+        ),
+      debriefs: FakeDebriefRepository()
+        ..debriefs.add(
+          DebriefSummary(
+            id: 'd',
+            date: now.subtract(const Duration(days: 2)),
+            name: 'Sortie longue',
+            type: SessionType.long,
+            distanceM: 16000,
+            movingS: 5400,
+            score: 82,
+            findings: const ['Tu es parti trop vite.'],
+          ),
+        ),
+    );
+    expect(find.text('Bonjour'), findsOneWidget);
+    expect(find.text('15,5 km/h'), findsOneWidget);
+    expect(find.text('52 bpm'), findsOneWidget);
+    expect(find.text('Semi de Lyon'), findsOneWidget);
+    expect(find.text('J-34'), findsOneWidget);
+    expect(find.text('Séance du jour'), findsOneWidget);
+    await scrollTo(tester, find.text('Mes zones'));
+    expect(find.text('Allure objectif 4:30/km'), findsOneWidget);
+    await scrollTo(tester, find.text('Dernier débrief'));
+    expect(find.text('82'), findsOneWidget);
+    expect(find.text('Tu es parti trop vite.'), findsOneWidget);
+  });
+
+  testWidgets('un appui ouvre l’écran correspondant', (tester) async {
     await pumpApp(tester);
-    await openTab(tester, HomeTab.evaluate);
-    await tester.scrollUntilVisible(find.text('VAMEVAL'), 100);
+    await openTab(tester, HomeTab.journey);
     await tester.tap(find.text('VAMEVAL'));
     await tester.pumpAndSettle();
-
     expect(find.text('Réglages du test'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
@@ -94,16 +171,16 @@ void main() {
 
   testWidgets('Cooper ouvre directement le chrono', (tester) async {
     await pumpApp(tester);
-    await openTab(tester, HomeTab.evaluate);
+    await openTab(tester, HomeTab.journey);
     await tester.tap(find.text('Cooper'));
     await tester.pumpAndSettle();
     expect(find.text('Départ dans 10 s'), findsOneWidget);
   });
 
-  testWidgets('Historique ouvre la liste des tests', (tester) async {
+  testWidgets('Moi > Mes résultats ouvre l’historique', (tester) async {
     await pumpApp(tester);
-    await openTab(tester, HomeTab.analyze);
-    await tester.tap(find.text('Historique'));
+    await openTab(tester, HomeTab.me);
+    await tester.tap(find.text('Mes résultats'));
     await tester.pumpAndSettle();
     expect(find.text('Aucun test enregistré'), findsOneWidget);
   });
@@ -112,89 +189,21 @@ void main() {
     tester,
   ) async {
     await pumpApp(tester);
-    await openTab(tester, HomeTab.evaluate);
-    await tester.scrollUntilVisible(
-      find.text('Mise en place'),
-      100,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await openTab(tester, HomeTab.journey);
+    await scrollTo(tester, find.text('Mise en place'));
     await tester.tap(find.text('Mise en place'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Terrain normé'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Rugby'));
     await tester.pumpAndSettle();
-
     expect(
       find.text('Repères tous les 22 m : pour quel test ?'),
       findsOneWidget,
     );
     await tester.tap(find.text('Navette Luc Léger'));
     await tester.pumpAndSettle();
-
     expect(find.text('Réglages du test'), findsOneWidget);
     expect(find.text('22'), findsOneWidget);
-  });
-
-  testWidgets('résumé : VMA, forme, prochaine course', (tester) async {
-    final now = DateTime.now();
-    final history = FakeHistoryRepository()
-      ..records.add(
-        TestRecord(
-          id: 't1',
-          date: now.subtract(const Duration(days: 12)),
-          kind: TestKind.vameval,
-          vmaKmh: 16.5,
-          vo2max: 57.75,
-        ),
-      );
-    final orthostatic = FakeOrthostaticRepository()
-      ..results.add(
-        OrthostaticResult(
-          date: now,
-          lyingBpm: 50,
-          standingPeakBpm: 85,
-          standingStableBpm: 70,
-          source: HeartRateSourceKind.manual,
-        ),
-      );
-    final checklists = FakeChecklistRepository()
-      ..raceList.add(
-        RaceChecklist(
-          id: 'r1',
-          raceName: 'Semi de Lyon',
-          raceDate: now.add(const Duration(days: 9)),
-          items: const [
-            ChecklistItem(label: 'Dossard', checked: true),
-            ChecklistItem(label: 'Gel'),
-          ],
-        ),
-      );
-    await pumpApp(
-      tester,
-      history: history,
-      orthostatic: orthostatic,
-      checklists: checklists,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('VMA 16,5 km/h · il y a 12 j'), findsOneWidget);
-    expect(find.text('Forme : référence en cours'), findsOneWidget);
-
-    await openTab(tester, HomeTab.race);
-    expect(find.text('Semi de Lyon'), findsOneWidget);
-    expect(find.text('Prochaine course · dans 9 j'), findsOneWidget);
-    expect(find.text('Checklist : 1/2'), findsOneWidget);
-
-    await openTab(tester, HomeTab.evaluate);
-    expect(find.text('Dernière VMA'), findsOneWidget);
-    expect(find.text('16,5 km/h'), findsOneWidget);
-    expect(find.text('+20 bpm'), findsOneWidget);
-  });
-
-  testWidgets('sans données : invitation à faire un test', (tester) async {
-    await pumpApp(tester);
-    await tester.pumpAndSettle();
-    expect(find.text('Pas encore de VMA'), findsOneWidget);
-    expect(find.textContaining('Prochaine course'), findsNothing);
   });
 }

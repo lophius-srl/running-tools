@@ -60,12 +60,6 @@ enum HomeEntry {
     Color(0xFF0B2A6F),
     Color(0xFF1E63E9),
   ]),
-  toolbox(
-    'Boîte à outils',
-    'Couloirs, chrono, club, métronome, GPS',
-    Icons.handyman,
-    [Color(0xFF475569), Color(0xFF1E63E9)],
-  ),
   goal('Mon objectif', 'La course qui organise ta préparation', Icons.flag, [
     Color(0xFFDB2777),
     Color(0xFF1E63E9),
@@ -147,52 +141,26 @@ enum HomeEntry {
   };
 }
 
-/// Onglets de l'accueil : la préparation d'une course, dans l'ordre.
+/// Onglets : mon tableau de bord, ma préparation, moi.
 enum HomeTab {
-  today('Aujourd’hui', Icons.today_outlined, Icons.today, [HomeEntry.toolbox]),
-  evaluate('Évaluer', Icons.speed_outlined, Icons.speed, [
-    HomeEntry.cooper,
-    HomeEntry.halfCooper,
-    HomeEntry.vameval,
-    HomeEntry.lucLeger,
-    HomeEntry.setup,
-    HomeEntry.orthostatic,
-    HomeEntry.profile,
-    HomeEntry.zones,
-  ]),
-  train('S’entraîner', Icons.directions_run_outlined, Icons.directions_run, [
-    HomeEntry.workouts,
-    HomeEntry.fartlek,
-    HomeEntry.deck,
-    HomeEntry.ghost,
-    HomeEntry.duo,
-  ]),
-  race('Course', Icons.flag_outlined, Icons.flag, [
-    HomeEntry.goal,
-    HomeEntry.simulator,
-    HomeEntry.checklists,
-  ]),
-  analyze('Analyser', Icons.insights_outlined, Icons.insights, [
-    HomeEntry.debrief,
-    HomeEntry.history,
-  ]);
+  home('Accueil', Icons.home_outlined, Icons.home),
+  journey('Ma prépa', Icons.route_outlined, Icons.route),
+  me('Moi', Icons.person_outline, Icons.person);
 
-  const HomeTab(this.label, this.icon, this.selectedIcon, this.entries);
+  const HomeTab(this.label, this.icon, this.selectedIcon);
 
   final String label;
   final IconData icon;
   final IconData selectedIcon;
-  final List<HomeEntry> entries;
 
-  /// Les quatre tests de VMA, en grandes tuiles.
-  static const vmaTests = [
-    HomeEntry.cooper,
-    HomeEntry.halfCooper,
-    HomeEntry.vameval,
-    HomeEntry.lucLeger,
+  /// Écrans rangés dans Moi.
+  static const meEntries = [
+    HomeEntry.profile,
+    HomeEntry.zones,
+    HomeEntry.history,
   ];
 
-  /// Outils ponctuels, rangés à part (Boîte à outils).
+  /// Outils ponctuels (Moi > Boîte à outils).
   static const toolbox = [
     HomeEntry.lanes,
     HomeEntry.multiTimer,
@@ -200,4 +168,63 @@ enum HomeTab {
     HomeEntry.metronome,
     HomeEntry.gps,
   ];
+}
+
+/// Les 4 étapes de la préparation, chacune avec ses écrans.
+enum JourneyStage {
+  evaluate(
+    'Évaluer',
+    'Où j’en suis ?',
+    Icons.speed,
+    [
+      HomeEntry.cooper,
+      HomeEntry.halfCooper,
+      HomeEntry.vameval,
+      HomeEntry.lucLeger,
+      HomeEntry.orthostatic,
+      HomeEntry.setup,
+    ],
+    [Color(0xFF0B2A6F), Color(0xFF1E63E9)],
+  ),
+  train(
+    'S’entraîner',
+    'Comment je progresse ?',
+    Icons.directions_run,
+    [
+      HomeEntry.workouts,
+      HomeEntry.fartlek,
+      HomeEntry.deck,
+      HomeEntry.ghost,
+      HomeEntry.duo,
+    ],
+    [Color(0xFF4338CA), Color(0xFF0EA5E9)],
+  ),
+  race(
+    'Courir',
+    'Comment je gère ma course ?',
+    Icons.flag,
+    [HomeEntry.goal, HomeEntry.simulator, HomeEntry.checklists],
+    [Color(0xFFDB2777), Color(0xFF7C3AED)],
+  ),
+  analyze(
+    'Analyser',
+    'Qu’est-ce que je retiens ?',
+    Icons.insights,
+    [HomeEntry.debrief],
+    [Color(0xFF0E7490), Color(0xFF1E63E9)],
+  );
+
+  const JourneyStage(
+    this.label,
+    this.question,
+    this.icon,
+    this.entries,
+    this.gradient,
+  );
+
+  final String label;
+  final String question;
+  final IconData icon;
+  final List<HomeEntry> entries;
+  final List<Color> gradient;
 }
